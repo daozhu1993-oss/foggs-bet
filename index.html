@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Fogg 的赌约 · 八十天环游地球</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <!-- 竖屏强制提示遮罩 -->
+  <div id="orientation-guard" class="orientation-guard hidden">
+    <div class="guard-content">
+      <div class="compass-icon">🧭</div>
+      <h2>请将设备旋转至横屏游玩</h2>
+      <p>为了获得最佳的维多利亚环球探险体验，请开启屏幕旋转并横置手机。</p>
+      <div class="device-rotate-anim">📱 ➔ 📲</div>
+    </div>
+  </div>
+
+  <!-- 游戏主容器（1280x720 等比缩放视口） -->
+  <div id="game-app">
+    <div id="game-container" class="game-container">
+      <!-- 小游戏 Canvas 画布 -->
+      <canvas id="game-canvas" width="1280" height="720"></canvas>
+
+      <!-- 粒子与特效 Canvas -->
+      <canvas id="fx-canvas" width="1280" height="720"></canvas>
+
+      <!-- 常驻 HUD 顶栏 -->
+      <header id="hud" class="hud-container hidden">
+        <div class="hud-left">
+          <div class="pocket-watch-hud" id="hud-pocket-watch">
+            <div class="watch-dial">
+              <div class="watch-gear">⚙️</div>
+              <div class="watch-hand" id="watch-hand"></div>
+            </div>
+            <div class="watch-info">
+              <span class="hud-label">剩余时间</span>
+              <span class="hud-value time-ticking" id="hud-days-text">80.0 天</span>
+            </div>
+          </div>
+          <div class="money-hud">
+            <div class="coin-icon">£</div>
+            <div class="money-info">
+              <span class="hud-label">银行本票</span>
+              <span class="hud-value" id="hud-money-text">£20,000</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-center">
+          <div class="location-badge" id="hud-location-badge">
+            <span class="loc-pin">📍</span>
+            <span class="loc-text" id="hud-location-text">伦敦 · 改良俱乐部</span>
+          </div>
+        </div>
+
+        <div class="hud-right">
+          <button id="btn-map" class="hud-btn" title="查看航线地图">🗺️ 航线</button>
+          <button id="btn-passport" class="hud-btn" title="查看护照钢印">📜 护照</button>
+          <button id="btn-arcade-hud" class="hud-btn hidden" title="游乐场自由挑战">🎪 游乐场</button>
+          <button id="btn-sound" class="hud-btn" title="声音开关">🔊 音效</button>
+          <button id="btn-pause" class="hud-btn" title="暂停游戏">⏸️</button>
+        </div>
+      </header>
+
+      <!-- 移动端虚拟按键层 -->
+      <div id="touch-controls" class="touch-controls hidden">
+        <!-- 左侧摇杆/十字方向键 -->
+        <div id="touch-dpad" class="touch-dpad">
+          <button class="dpad-btn dpad-up" data-key="ArrowUp">▲</button>
+          <div class="dpad-mid">
+            <button class="dpad-btn dpad-left" data-key="ArrowLeft">◀</button>
+            <div class="dpad-center">●</div>
+            <button class="dpad-btn dpad-right" data-key="ArrowRight">▶</button>
+          </div>
+          <button class="dpad-btn dpad-down" data-key="ArrowDown">▼</button>
+        </div>
+
+        <!-- 右侧动作按键 -->
+        <div id="touch-actions" class="touch-actions">
+          <button id="touch-btn-c" class="action-btn btn-c" data-key="KeyC" style="display: none;">
+            <span class="btn-label">C</span>
+            <span class="btn-sub" id="btn-c-sub">特技</span>
+          </button>
+          <button id="touch-btn-b" class="action-btn btn-b" data-key="KeyK">
+            <span class="btn-label">B</span>
+            <span class="btn-sub" id="btn-b-sub">滑铲</span>
+          </button>
+          <button id="touch-btn-a" class="action-btn btn-a" data-key="Space">
+            <span class="btn-label">A</span>
+            <span class="btn-sub" id="btn-a-sub">跳跃</span>
+          </button>
+        </div>
+
+        <!-- 关3 特别：Fogg 牵制按钮 -->
+        <div id="fogg-assist-btn-container" class="fogg-assist-container hidden">
+          <button id="btn-fogg-distract" class="fogg-distract-btn">
+            <div class="fogg-avatar-mini">🎩</div>
+            <div class="fogg-cmd-text">
+              <span class="cmd-title">Fogg 掷金币牵制</span>
+              <span class="cmd-cd" id="fogg-cd-text">就绪</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 电报纸叙事对白框 -->
+      <div id="dialogue-container" class="dialogue-container hidden">
+        <div class="dialogue-paper">
+          <div class="dialogue-header">
+            <div class="telegraph-stamp">THE DAILY TELEGRAPH · 1872 SPECIAL DISPATCH</div>
+            <div class="dialogue-speaker" id="dialogue-speaker">斐利亚·福克</div>
+          </div>
+          <div class="dialogue-body">
+            <div class="speaker-avatar-frame">
+              <canvas id="speaker-avatar-canvas" width="70" height="70" class="speaker-avatar-canvas"></canvas>
+            </div>
+            <div class="dialogue-text-wrap">
+              <p id="dialogue-text" class="dialogue-text">两万英镑已经存入巴林兄弟银行。八十天后，我将在此处收回赌注。</p>
+              <div class="dialogue-prompt">点击或按空格继续 ➔</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 决策弹窗（Fogg 冷静决策层） -->
+      <div id="decision-modal" class="modal-overlay hidden">
+        <div class="decision-box">
+          <div class="decision-header">
+            <span class="decision-icon">⚖️</span>
+            <h3 id="decision-title">福克的绅士抉择</h3>
+          </div>
+          <p id="decision-desc" class="decision-desc">误了前往苏伊士的班轮。是要等待下一班班轮，还是不惜重金包租私家蒸汽快艇？</p>
+          <div id="decision-options" class="decision-options">
+            <!-- 动态生成选项按钮 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 航线地图弹窗 -->
+      <div id="map-modal" class="modal-overlay hidden">
+        <div class="vintage-map-box">
+          <div class="modal-title-bar">
+            <h3>🌍 1872 维多利亚环球航线图</h3>
+            <button class="modal-close-btn" id="btn-close-map">✕</button>
+          </div>
+          <div class="map-canvas-container">
+            <canvas id="map-canvas" width="1000" height="520"></canvas>
+          </div>
+          <div class="map-footer" id="map-footer-info">
+            当前航段：伦敦 ➔ 苏伊士 ➔ 印度孟买与加尔各答（MVP 切片）
+          </div>
+        </div>
+      </div>
+
+      <!-- 护照本弹窗 -->
+      <div id="passport-modal" class="modal-overlay hidden">
+        <div class="passport-book">
+          <div class="modal-title-bar">
+            <h3>📜 斐利亚·福克先生之大英帝国护照</h3>
+            <button class="modal-close-btn" id="btn-close-passport">✕</button>
+          </div>
+          <div class="passport-pages">
+            <div class="passport-left-page">
+              <div class="passport-header">
+                <h4>PASSPORT</h4>
+                <p>Her Britannic Majesty's Foreign Office</p>
+              </div>
+              <div class="passport-photo-area">
+                <canvas id="passport-fogg-portrait" width="100" height="120" class="passport-portrait-canvas"></canvas>
+                <div class="passport-fields">
+                  <p><strong>持照人：</strong>Phileas Fogg (绅士)</p>
+                  <p><strong>随行侍从：</strong>Jean Passepartout</p>
+                  <p><strong>同行旅伴：</strong><span id="passport-aouda-status">尚未同行</span></p>
+                  <p><strong>出发日期：</strong>1872年10月2日</p>
+                  <p><strong>注资金额：</strong>£20,000</p>
+                </div>
+              </div>
+            </div>
+            <div class="passport-right-page">
+              <div class="stamps-grid-title">ENTRY & EXIT VISAS</div>
+              <div class="stamps-grid" id="passport-stamps-grid">
+                <!-- 动态印章 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 关卡过关结算卡 (支持随时重新挑战) -->
+      <div id="result-modal" class="modal-overlay hidden">
+        <div class="result-card">
+          <div class="result-ribbon" id="result-rating-ribbon">PERFECT 完美通关</div>
+          <h2 id="result-leg-title">第一关 · 伦敦→苏伊士</h2>
+          <div class="result-stats-row">
+            <div class="stat-box">
+              <span class="stat-name">耗用 / 节省时间</span>
+              <span class="stat-val" id="result-days-diff">-0.5 天</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-name">资金变动</span>
+              <span class="stat-val" id="result-money-diff">£0</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-name">剩余总时间</span>
+              <span class="stat-val" id="result-total-days-left">73.5 天</span>
+            </div>
+          </div>
+          <p class="result-comment" id="result-comment">福克：「分秒不差，正如怀表所示。路路通，备好行李去往下一站。」</p>
+          <div class="result-actions">
+            <button id="btn-retry-leg" class="secondary-btn">🔄 重新挑战本关</button>
+            <button id="btn-next-leg" class="gold-btn">盖章并启程下一段 ➔</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🎪 《双人成行》式探险游乐场 (MiniGame Arcade 自由选关与刷分) -->
+      <div id="arcade-modal" class="modal-overlay hidden">
+        <div class="arcade-box">
+          <div class="modal-title-bar">
+            <h3>🎪 探险游乐场 · 自由挑战室 (MiniGame Arcade)</h3>
+            <button class="modal-close-btn" id="btn-close-arcade">✕</button>
+          </div>
+          <p class="arcade-subtitle">已在主线探索并解锁的小游戏可在此随心所欲反复畅玩、磨练操作与冲击最高分记录！</p>
+          <div class="arcade-grid">
+            <div class="arcade-card" id="arcade-card-whist" data-game="whist">
+              <div class="arcade-card-preview whist-bg">🎴</div>
+              <div class="arcade-card-info">
+                <h4>关0 · 惠斯特吃墩牌局</h4>
+                <p>4人博弈、同花跟出、红桃将牌杀牌</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">博弈策略</span>
+                  <span class="best-score" id="best-whist">最高: 0 墩</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即单挑 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-parkour" data-game="parkour">
+              <div class="arcade-card-preview parkour-bg">🏃</div>
+              <div class="arcade-card-info">
+                <h4>关1 · 多佛码头追船跑酷</h4>
+                <p>三阶段纵深跑酷、二段跳、滑铲、斗Fix</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">动作反应</span>
+                  <span class="best-score" id="best-parkour">最佳用时: --</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即挑战 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-steam" data-game="steamOverdrive">
+              <div class="arcade-card-preview steam-bg">🚢</div>
+              <div class="arcade-card-info">
+                <h4>关2 · 蒙古号红海风暴超频</h4>
+                <p>双轨蒸汽节拍、精准连击、黄金飞轮超频</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">节奏反应</span>
+                  <span class="best-score" id="best-steamOverdrive">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">进入轮机舱 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-elephant" data-game="elephantRide">
+              <div class="arcade-card-preview elephant-bg">🐘</div>
+              <div class="arcade-card-info">
+                <h4>关3a · 印度雨林巨象破障</h4>
+                <p>巨象物理惯性、践踏泥潭、蛮力粉碎枯木</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">重量破障</span>
+                  <span class="best-score" id="best-elephant">最佳用时: --</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即骑乘 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-stealth" data-game="stealthRescue">
+              <div class="arcade-card-preview stealth-bg">🛕</div>
+              <div class="arcade-card-info">
+                <h4>关3b · 火祭神庙夜潜营救</h4>
+                <p>暗黑迷宫、动态火把光影、Fogg掷金币引怪</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">双人协作</span>
+                  <span class="best-score" id="best-stealth">最佳营救: --</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即潜入 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-court" data-game="courtBail">
+              <div class="arcade-card-preview whist-bg">⚖️</div>
+              <div class="arcade-card-info">
+                <h4>关4 · 加尔各答公堂智斗</h4>
+                <p>法理辩护击退控词、两千英镑保释脱身</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">叙事解谜</span>
+                  <span class="best-score" id="best-courtBail">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即辩护 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-typhoon" data-game="typhoonSailing">
+              <div class="arcade-card-preview steam-bg">⛵</div>
+              <div class="arcade-card-info">
+                <h4>关5 · 坦克德尔号台风搏击</h4>
+                <p>南中国海狂暴台风操帆、穿云信号弹</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">航海竞速</span>
+                  <span class="best-score" id="best-typhoonSailing">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即扬帆 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-circus" data-game="circusAcrobat">
+              <div class="arcade-card-preview elephant-bg">🎭</div>
+              <div class="arcade-card-info">
+                <h4>关6 · 横滨长鼻天狗杂技</h4>
+                <p>高空叠罗汉力矩平衡、飞扑相认重聚</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">物理平衡</span>
+                  <span class="best-score" id="best-circusAcrobat">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即表演 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-brawl" data-game="sanFranciscoBrawl">
+              <div class="arcade-card-preview parkour-bg">🥊</div>
+              <div class="arcade-card-info">
+                <h4>关7 · 旧金山选战大乱斗</h4>
+                <p>街头酒馆桌椅乱飞、法式拐杖格挡突围</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">动作防御</span>
+                  <span class="best-score" id="best-sanFranciscoBrawl">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即突围 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-train" data-game="trainDefense">
+              <div class="arcade-card-preview stealth-bg">🚂</div>
+              <div class="arcade-card-info">
+                <h4>关8a · 洛矶山列车断桥飞跃</h4>
+                <p>疾驰机车车顶速射、全速飞跃断桥</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">射击防守</span>
+                  <span class="best-score" id="best-trainDefense">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即御敌 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-sledge" data-game="iceSledge">
+              <div class="arcade-card-preview parkour-bg">🎿</div>
+              <div class="arcade-card-info">
+                <h4>关8b · 内布拉斯加风帆雪橇</h4>
+                <p>暴风雪冰原 50 迈狂飙、避开冰隙直扑纽约</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">冰原竞速</span>
+                  <span class="best-score" id="best-iceSledge">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即滑行 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-atlantic" data-game="atlanticBurning">
+              <div class="arcade-card-preview steam-bg">🔥</div>
+              <div class="arcade-card-info">
+                <h4>关9 · 亨丽埃塔号拆船大燃烧</h4>
+                <p>煤炭耗尽拆甲板船舱投炉、烈火冲滩利物浦</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">载具拆解</span>
+                  <span class="best-score" id="best-atlanticBurning">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即烧船 ➔</button>
+            </div>
+
+            <div class="arcade-card" id="arcade-card-finale" data-game="londonFinale">
+              <div class="arcade-card-preview whist-bg">👑</div>
+              <div class="arcade-card-info">
+                <h4>关10 · 伦敦日界线 80 秒绝杀</h4>
+                <p>跨越 360° 夺回一天、马车破门终极胜利</p>
+                <div class="arcade-card-meta">
+                  <span class="badge-tag">终极大捷</span>
+                  <span class="best-score" id="best-londonFinale">最高分: 0</span>
+                </div>
+              </div>
+              <button class="arcade-play-btn">立即绝杀 ➔</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 终局/切片完结分享长图弹窗 -->
+      <div id="share-modal" class="modal-overlay hidden">
+        <div class="share-box">
+          <div class="modal-title-bar">
+            <h3>🏆 《环球探险家档案》纪念海报</h3>
+            <button class="modal-close-btn" id="btn-close-share">✕</button>
+          </div>
+          <div class="share-preview-wrap">
+            <canvas id="share-poster-canvas" width="800" height="1200"></canvas>
+            <img id="share-poster-img" class="share-img-mobile hidden" alt="长按保存海报">
+          </div>
+          <div class="share-actions">
+            <button id="btn-download-poster" class="gold-btn">📥 下载高清海报</button>
+            <button id="btn-copy-share-text" class="hud-btn">📋 复制探险战绩</button>
+            <button id="btn-open-arcade-final" class="gold-btn">🎪 探险游乐场</button>
+            <button id="btn-restart-game" class="danger-btn">🔄 重新开始探险</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 标题封面主菜单 -->
+      <div id="title-screen" class="title-screen">
+        <div class="title-bg-ornament"></div>
+        <div class="title-content">
+          <div class="title-kicker">1872 · AROUND THE WORLD IN EIGHTY DAYS</div>
+          <h1 class="title-main">Fogg 的赌约</h1>
+          <p class="title-subtitle">八十天，两万英镑，一秒也不容差池的环球狂澜</p>
+
+          <div class="title-actor-preview">
+            <div class="actor-card">
+              <img id="hero-fogg-img" class="hero-img" alt="福克先生">
+              <span class="actor-name">福克先生</span>
+              <span class="actor-role">冷静决策与投资</span>
+            </div>
+            <div class="actor-link">✦ 携手同行 ✦</div>
+            <div class="actor-card">
+              <img id="hero-pass-img" class="hero-img" alt="路路通">
+              <span class="actor-name">路路通</span>
+              <span class="actor-role">灵巧操作与行动</span>
+            </div>
+          </div>
+
+          <div class="title-buttons">
+            <button id="btn-start-game" class="start-btn gold-btn">启程 · 开启主线探险 ➔</button>
+            <button id="btn-open-arcade" class="start-btn secondary-btn">🎪 探险游乐场</button>
+            <button id="btn-load-game" class="start-btn secondary-btn hidden">继续未竟的旅程</button>
+          </div>
+
+          <div class="title-hints">
+            <span>💻 电脑：键盘 WASD / 方向键 / 空格 / K</span>
+            <span>📱 手机：屏幕虚拟摇杆与动作按键</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 消息气泡浮层 -->
+      <div id="toast-container" class="toast-container"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
