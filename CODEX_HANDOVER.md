@@ -1,7 +1,8 @@
 # 《Fogg 的赌约》全量工程研发交接与进阶指南 (Handover for Codex)
 
 > **项目名称**：《Fogg 的赌约：八十天环游地球》（Around the World in 80 Days: Fogg's Wager）  
-> **线上发布地址**：[https://daozhu1993-oss.github.io/foggs-bet/](https://daozhu1993-oss.github.io/foggs-bet/)  
+> **线上专属域名**：[https://fogg.daozhuai.cn/](https://fogg.daozhuai.cn/)（国内免翻墙高速直连）  
+> **GitHub Pages 备用地址**：[https://daozhu1993-oss.github.io/foggs-bet/](https://daozhu1993-oss.github.io/foggs-bet/)  
 > **GitHub 仓库**：[https://github.com/daozhu1993-oss/foggs-bet](https://github.com/daozhu1993-oss/foggs-bet)  
 > **项目根目录**：`/Users/gx/.gemini/antigravity/scratch/foggs-bet`  
 > **单文件发行版**：`Fogg赌约_双击直接玩.html` (**4.05 MB**，零外部依赖，极速秒开)  
