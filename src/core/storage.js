@@ -20,7 +20,14 @@ export const StorageManager = {
       if (!raw) return null;
       const data = JSON.parse(raw);
       gameState.load(data);
-      return data;
+      // 兼容 v84 已结算却仍指向上一关的存档；保留全部已获得资产。
+      let leg = gameState.get().currentLeg;
+      while (/^leg\d+$/.test(leg) && gameState.get().legResults[leg]) {
+        const index = Number(leg.slice(3));
+        leg = index >= 10 ? 'completed' : `leg${index + 1}`;
+      }
+      gameState.setLeg(leg);
+      return gameState.get();
     } catch (e) {
       console.error('[StorageManager] Load failed:', e);
       return null;
@@ -28,7 +35,7 @@ export const StorageManager = {
   },
 
   hasSave() {
-    return !!localStorage.getItem(STORAGE_KEY);
+    try { return !!localStorage.getItem(STORAGE_KEY); } catch { return false; }
   },
 
   clear() {

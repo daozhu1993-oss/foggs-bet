@@ -21,11 +21,13 @@ export class DecisionModal {
           const btn = document.createElement('button');
           btn.className = 'decision-opt-btn';
           btn.id = 'decision-opt-' + idx;
+          btn.disabled = !!opt.disabled;
           btn.innerHTML = `
             <span><strong>${opt.label}</strong></span>
             <span style="color: ${opt.costColor || '#8b1e1e'};">${opt.subText || ''}</span>
           `;
           btn.addEventListener('click', () => {
+            if (btn.disabled) return;
             sound.playCoinClink();
             this.hide();
             resolve(opt);
@@ -35,6 +37,10 @@ export class DecisionModal {
       }
 
       this.modal.classList.remove('hidden');
+      this.modal.setAttribute('role', 'dialog');
+      this.modal.setAttribute('aria-modal', 'true');
+      this.modal.setAttribute('aria-labelledby', 'decision-title');
+      this.optionsContainer?.querySelector('button:not(:disabled)')?.focus();
       sound.playClick();
     });
   }

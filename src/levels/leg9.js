@@ -4,7 +4,6 @@ import { resolveLeg } from '../core/resolve.js';
 import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
-import { gameState } from '../core/state.js';
 
 export async function runLeg9({ gameRunner, hud }) {
   hud.setLocation('大西洋 ➔ 英国利物浦港');
@@ -22,7 +21,7 @@ export async function runLeg9({ gameRunner, hud }) {
     {
       speaker: '斐利亚·福克',
       avatar: 'fogg',
-      text: '斯皮迪船长，我出六万英镑整船买下亨丽埃塔号。现在，这艘船由我处置。水手们，取斧头来！'
+      text: '六万美元。我要烧掉船上的木构件，船壳和机器仍归你。斯皮迪船长，我们成交吗？'
     },
     {
       speaker: '让·路路通',
@@ -31,56 +30,37 @@ export async function runLeg9({ gameRunner, hud }) {
     }
   ]);
 
-  let keepRetrying = true;
-  let finalGameResult = null;
-
-  while (keepRetrying) {
+  while (true) {
     const gameResult = await gameRunner.runMiniGame('atlanticBurning', {
       difficulty: 1,
       title: '亨丽埃塔号·大西洋拆船烈火大燃烧'
     });
 
-    finalGameResult = gameResult;
     arcadeManager.saveHighScore('atlanticBurning', gameResult.score || 0);
-
-    let daysDelta = gameResult.daysDelta || 0;
-    let moneyDelta = gameResult.moneyDelta || -60000;
-    let comment = gameResult.comment || '★ 亨丽埃塔号化作铁骨残骸，伴随爱尔兰海盗狂暴节拍，准时冲滩利物浦！';
-
-    const action = await resultCard.show({
-      title: '第九章完成：大西洋烈火冲滩奇迹',
-      subtitle: '亨丽埃塔号化作铁骨残骸，按时靠泊利物浦！',
-      result: gameResult.result || 'good',
+    const reached = gameResult.reached === true;
+    const record = {
+      title: reached ? '第九关 · 最后一炉火送我们到港' : '第九关 · 接应船带来转机',
+      subtitle: reached ? '亨丽埃塔号驶抵利物浦。' : '本次未赶上航期；可重试，或接受余帆与接应船多用一天到港。',
+      result: reached ? gameResult.result : 'pass',
       baseDays: 9.0,
-      daysDelta,
-      moneyDelta,
+      daysDelta: gameResult.daysDelta ?? (reached ? 0 : 1),
+      moneyDelta: gameResult.moneyDelta ?? -12000,
       score: gameResult.score || 0,
-      badge: '🔥 浴火渡洋铁血船长',
-      comment
-    });
-
-    if (action === 'next' || action === 'continue') {
-      keepRetrying = false;
-    }
-  }
-
-  if (finalGameResult) {
-    resolveLeg('leg9', {
-      title: '第九关 · 亨丽埃塔号大西洋大燃烧',
-      result: finalGameResult.result || 'good',
-      baseDays: 9.0,
-      daysDelta: finalGameResult.daysDelta || 0,
-      moneyDelta: finalGameResult.moneyDelta || -60000,
-      flags: finalGameResult.flags || { atlanticCrossed: true },
+      badge: reached ? '🔥 最后一炉火' : '⛵ 迟到的靠港',
+      flags: { atlanticCrossed: reached, atlanticAssistedArrival: !reached },
       stamp: {
         id: 'liverpool',
         city: '大英帝国利物浦海关',
-        date: '第 79 天',
-        label: '大西洋烈火冲滩入境印',
+        label: reached ? '大西洋入境印' : '接应抵港入境印',
         color: 'liverpool'
       },
-      comment: finalGameResult.comment
-    });
+      comment: `${gameResult.comment || '最后的航程，将记入这趟旅行的账本。'} 拆船购料统一折算 £12,000，仅接受这张账单后结算。`
+    };
+    const action = await resultCard.show(record);
+    if (action === 'next' || action === 'continue') {
+      resolveLeg('leg9', record);
+      break;
+    }
   }
 
   await dialogue.playSequence([
@@ -92,7 +72,7 @@ export async function runLeg9({ gameRunner, hud }) {
     {
       speaker: '让·路路通',
       avatar: 'passepartout',
-      text: '（痛哭流涕）天哪！在这个节骨眼上！我们离伦敦只剩几个小时了啊！'
+      text: '眼看就要到伦敦了……菲克斯先生，您究竟还要耽搁我们多少时间？'
     }
   ]);
 

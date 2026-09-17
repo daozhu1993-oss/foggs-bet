@@ -1,6 +1,11 @@
 import { sound } from '../engine/audio.js';
 import { events } from '../core/events.js';
 
+// 玩法/计分修正后另存纪录，旧分数保留，不与新规则混排。
+const ARCADE_SCORE_KEYS = { typhoonSailing: 'typhoonSailing_v87', circusAcrobat: 'circusAcrobat_v88',
+  trainDefense: 'trainDefense_v88', iceSledge: 'iceSledge_v88',
+  sanFranciscoBrawl: 'sanFranciscoBrawl_v88', atlanticBurning: 'atlanticBurning_v89' };
+
 export class ArcadeManager {
   constructor() {
     this.modal = document.getElementById('arcade-modal');
@@ -35,6 +40,7 @@ export class ArcadeManager {
       if (btn) {
         btn.addEventListener('click', (e) => {
           if (e && e.stopPropagation) e.stopPropagation();
+          if (this.campaignActive) return;
           this.hide();
           events.emit('arcade:start_game', game);
         });
@@ -54,13 +60,18 @@ export class ArcadeManager {
   }
 
   saveHighScore(game, score) {
-    if (score > (this.highScores[game] || 0)) {
-      this.highScores[game] = score;
+    const scoreKey = ARCADE_SCORE_KEYS[game] || game;
+    if (score > (this.highScores[scoreKey] || 0)) {
+      this.highScores[scoreKey] = score;
       try {
         localStorage.setItem('foggs_bet_arcade_scores', JSON.stringify(this.highScores));
       } catch (e) {}
       this.updateScoresUI();
     }
+  }
+
+  getHighScore(game) {
+    return this.highScores[ARCADE_SCORE_KEYS[game] || game] || 0;
   }
 
   updateScoresUI() {
@@ -69,20 +80,31 @@ export class ArcadeManager {
       const game = card.getAttribute('data-game');
       const scoreEl = card.querySelector('.best-score');
       if (scoreEl && game) {
-        const score = this.highScores[game] || 0;
-        scoreEl.textContent = game === 'whist' ? `最高: ${score} 墩` : `最高分: ${score}`;
+        const score = this.getHighScore(game);
+        scoreEl.textContent = `最高分: ${score}`;
       }
     });
+  }
+
+  setCampaignActive(active) {
+    this.campaignActive = active;
+    this.cards.forEach(card => { card.querySelector('.arcade-play-btn').disabled = active; });
+    this.modal.querySelector('.arcade-subtitle').textContent = active
+      ? '主线进行中：此处可看最高分。要练习其他关卡，请先在暂停菜单返回封面，主线进度会保留。'
+      : '13 个独立挑战均可直接练习。只记录最高分，不改变主线存档。';
   }
 
   show() {
     this.updateScoresUI();
     if (this.modal) this.modal.classList.remove('hidden');
     sound.playCardFlip();
+    events.emit('ui:overlay', { id: 'arcade', open: true });
   }
 
   hide() {
     if (this.modal) this.modal.classList.add('hidden');
+    document.activeElement?.blur();
+    events.emit('ui:overlay', { id: 'arcade', open: false });
   }
 }
 

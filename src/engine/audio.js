@@ -6,6 +6,7 @@ class SoundEngine {
   constructor() {
     this.ctx = null;
     this.enabled = true;
+    this.paused = false;
     this.tickingInterval = null;
     this.music = new DynamicMusicEngine(this);
     this.ambient = new AmbientSoundscape(this);
@@ -22,6 +23,7 @@ class SoundEngine {
   }
 
   resume() {
+    if (this.paused) return;
     this.init();
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume();
@@ -30,13 +32,19 @@ class SoundEngine {
 
   toggle() {
     this.enabled = !this.enabled;
-    if (!this.enabled) {
-      this.music.stopTheme();
-      if (this.ambient) this.ambient.updateMuteState();
-    } else {
-      if (this.ambient) this.ambient.updateMuteState();
+    // Keep the selected theme alive, so unmuting cannot permanently lose the BGM.
+    if (this.ctx && this.music.masterGain) {
+      this.music.masterGain.gain.setTargetAtTime(this.enabled ? 0.35 : 0, this.ctx.currentTime, 0.02);
     }
+    if (this.ambient) this.ambient.updateMuteState();
     return this.enabled;
+  }
+
+  setPaused(paused) {
+    this.paused = paused;
+    if (!this.ctx) return;
+    const operation = paused ? this.ctx.suspend() : this.ctx.resume();
+    operation?.catch(() => {});
   }
 
   setAmbient(zoneName) {
@@ -53,7 +61,7 @@ class SoundEngine {
 
   // 1. 怀表滴答音（随紧急度提速与变调）
   playTick(urgent = false) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -83,7 +91,7 @@ class SoundEngine {
   // 2. 伦敦改良俱乐部大本钟远鸣
   // 砍伐木材重击声 (Axe Chop Wood Crunch)
   playAxeChop() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -121,7 +129,7 @@ class SoundEngine {
 
   // 炉膛烈火轰鸣 (Furnace Roar & Steam Ignition)
   playFurnaceRoar() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -146,7 +154,7 @@ class SoundEngine {
 
   // 紧急蒸汽泄压排气声 (Steam Vent Hiss)
   playSteamVent() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -177,7 +185,7 @@ class SoundEngine {
   }
 
   playBigBen() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -205,7 +213,7 @@ class SoundEngine {
 
   // 3. 蒸汽轮船与火车长鸣汽笛
   playSteamWhistle() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -233,7 +241,7 @@ class SoundEngine {
 
   // 4. 纸牌翻面与摩擦声
   playCardFlip() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -257,7 +265,7 @@ class SoundEngine {
 
   // 5. 拍桌摔牌重击声 (Card Slam)
   playCardSlam() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -281,7 +289,7 @@ class SoundEngine {
 
   // 6. 黄铜金币清脆落袋声
   playCoinClink() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -310,7 +318,7 @@ class SoundEngine {
 
   // 7. 签证钢印重扣盖章声
   playStampThud() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -334,7 +342,7 @@ class SoundEngine {
 
   // 8. 战象昂首长鸣 (Kiouni Trumpet)
   playElephantTrumpet() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -360,7 +368,7 @@ class SoundEngine {
 
   // 9. 潜行被发现警报
   playStealthAlert(level = 1) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -384,7 +392,7 @@ class SoundEngine {
 
   // 10. 奔跑与跳跃动作音效
   playJump() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -407,7 +415,7 @@ class SoundEngine {
   }
 
   playCrash() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -430,7 +438,7 @@ class SoundEngine {
   }
 
   playVictory() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -456,7 +464,7 @@ class SoundEngine {
   }
 
   playWhoosh() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -480,7 +488,7 @@ class SoundEngine {
   }
 
   playSteam() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -503,7 +511,7 @@ class SoundEngine {
   }
 
   playThunder() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -526,7 +534,7 @@ class SoundEngine {
   }
 
   playClick() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -548,7 +556,7 @@ class SoundEngine {
 
   // 经典太鼓达人打击乐物理建模 (咚 Dong / 咔 Ka / 大咚 DON)
   playRhythmHit(type = 'left') {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -654,7 +662,7 @@ class SoundEngine {
 
   // 节拍器鼓点
   playBeatTick(isDownbeat = false) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -673,7 +681,7 @@ class SoundEngine {
 
   // 1. 太鼓达人 PERFECT 精准打击奖励水晶音 (Reward Crystal Chime)
   playRewardChime(isPerfect = true, isDon = false) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -698,7 +706,7 @@ class SoundEngine {
 
   // 2. 连击里程碑奖励号角 (Combo Milestone Fanfare)
   playComboMilestone(milestone = 10) {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -726,7 +734,7 @@ class SoundEngine {
 
   // 法庭专用：法官惊堂木重击声 (Gavel Bang BANG!)
   playCourtGavel() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -753,7 +761,7 @@ class SoundEngine {
 
   // 法庭专用：逆转裁判式【⚡ 异议！/ OBJECTION!】拍案金光音效
   playCourtObjection() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 
@@ -788,7 +796,7 @@ class SoundEngine {
 
   // 11. 街机主炮射击音效 (Arcade Cannon Shot)
   playPop() {
-    if (!this.enabled) return;
+    if (!this.enabled || this.paused) return;
     this.resume();
     if (!this.ctx) return;
 

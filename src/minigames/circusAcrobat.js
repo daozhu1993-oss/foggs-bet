@@ -1,4 +1,4 @@
-// 《Fogg 的赌约》· 关6 日本横滨长鼻马戏团 · 道具连击接抛与主仆大重聚 (方案A 经典高能街机重塑典藏版 - 磁力吸附与危险红标版)
+// 横滨三幕演出：表演成绩与主动相认分别记录，错过相认交由主线补救。
 import { MiniGame } from './_base/MiniGame.js';
 import { particles } from '../engine/particles.js';
 import { GameImages } from '../assets/images.js';
@@ -40,7 +40,6 @@ export class CircusAcrobatMiniGame extends MiniGame {
     this.balanceVelocity = 0;
     this.pyramidLevel = 5;
     this.pyramidWobble = 0;
-    this.posePromptTimer = 0;
     this.poseSuccessCount = 0;
 
     // 第 3 幕：主仆重聚大飞扑
@@ -54,6 +53,9 @@ export class CircusAcrobatMiniGame extends MiniGame {
 
     this.timer = 40.0;
     this.score = 0;
+    this.caughtProps = 0;
+    this.targetX = 640;
+    this.endTimer = 0;
     this.animTime = 0;
 
     // 樱花雨粒子
@@ -94,7 +96,6 @@ export class CircusAcrobatMiniGame extends MiniGame {
     this.balance = 0;
     this.balanceVelocity = 0;
     this.pyramidWobble = 0;
-    this.posePromptTimer = 1.2;
     this.poseSuccessCount = 0;
 
     this.foggSpotted = false;
@@ -103,6 +104,9 @@ export class CircusAcrobatMiniGame extends MiniGame {
 
     this.timer = 40.0;
     this.score = 0;
+    this.caughtProps = 0;
+    this.targetX = 640;
+    this.endTimer = 0;
     this.animTime = 0;
 
     this.camera.setWorldBounds(0, 1280, 0, 720);
@@ -111,27 +115,37 @@ export class CircusAcrobatMiniGame extends MiniGame {
     this.input.configureUI({
       showDpad: true,
       showA: true,
-      showB: true,
-      labelA: '腾空 / POSE',
-      labelB: '冲刺滑铲'
+      showB: false,
+      showC: false,
+      labelA: '起跳'
     });
 
     if (this.sound.music) this.sound.music.playTheme('circus');
-    this.fx.toast('【横滨长鼻马戏团】[A/D/←/→] 疾跑长鼻接球（带磁力吸附） | [W/空格/A] 腾空起跳躲避 ⚠️ 红圈香蕉与炸弹！', 5500);
   }
 
   update(rawDt) {
     if (!this.running || this.paused) return;
-    const dt = Math.max(0.0001, rawDt || 0.016);
+    const dt = Math.min(0.05, Math.max(0, Number.isFinite(rawDt) ? rawDt : 0));
+    if (!dt) return;
 
     this.animTime += dt;
-    this.timer -= dt;
+    if (this.act === 4) {
+      this.endTimer -= dt;
+      if (this.endTimer <= 0) this.finishGame();
+      return;
+    }
+    // 截止前已起跳就允许落地，结尾动画不继续消耗相认窗口。
+    if (!this.pyramidCollapsed) this.timer = Math.max(0, this.timer - dt);
 
     const inp = this.input ? this.input.input : null;
     const keys = inp ? (inp.keys || {}) : {};
     const btns = inp ? (inp.buttons || {}) : {};
     const axis = inp ? (inp.axis || { x: 0, y: 0 }) : { x: 0, y: 0 };
     const pointer = inp ? (inp.pointer || {}) : {};
+    const justKeys = inp?.justKeys || {};
+    const previousAct = this.act;
+    const clickedAction = pointer.justDown && pointer.x >= 430 && pointer.x <= 850 && pointer.y >= 637 && pointer.y <= 700;
+    const actionPressed = btns.justA || justKeys.Space || justKeys.KeyJ || justKeys.Enter || clickedAction;
 
     // 飘落樱花雨更新
     this.sakuraPetals.forEach(p => {
@@ -149,16 +163,16 @@ export class CircusAcrobatMiniGame extends MiniGame {
       // 进入第 2 幕：五层叠罗汉
       this.act = 2;
       this.player.x = 640;
-      this.player.y = 220;
+      this.player.y = 240;
       this.player.action = 'balance';
+      this.input.configureUI({ showDpad: true, showA: true, showB: false, showC: false, labelA: '绿区 · 摆姿势' });
       this.sound.playSteamWhistle();
-      this.fx.toast('🎪 第 2 幕：五层长鼻人梯登场！[←/→] 维持重力平衡，按 [空格/A] 摆出天狗 POSE！', 4500);
     } else if (this.act === 2 && this.timer <= 12.0) {
       // 进入第 3 幕：发现福克先生
       this.act = 3;
       this.foggSpotted = true;
-      this.sound.playVictory();
-      this.fx.toast('⭐ 探照灯照亮台下贵宾席！发现福克先生与艾娥达夫人！按 [空格/飞扑] 纵身飞越！', 5000);
+      this.input.configureUI({ showDpad: false, showA: true, showB: false, showC: false, labelA: '向福克飞扑' });
+      this.sound.playSteamWhistle();
     }
 
     // ==================== 第 1 幕：跑位接道具 ====================
@@ -171,10 +185,9 @@ export class CircusAcrobatMiniGame extends MiniGame {
         if (keys['ArrowLeft'] || keys['KeyA'] || btns.left || axis.x < -0.2) moveX -= 1;
         if (keys['ArrowRight'] || keys['KeyD'] || btns.right || axis.x > 0.2) moveX += 1;
 
-        if (pointer.down) {
-          const dx = pointer.x - this.player.x;
-          if (Math.abs(dx) > 15) moveX = Math.sign(dx);
-        }
+        if ((pointer.down || pointer.justDown) && pointer.y > 170 && pointer.y < 625) this.targetX = pointer.x;
+        if (moveX) this.targetX = this.player.x;
+        else if (Math.abs(this.targetX - this.player.x) > 10) moveX = Math.sign(this.targetX - this.player.x);
 
         if (moveX !== 0) {
           this.player.x += moveX * this.player.speed * dt;
@@ -185,7 +198,7 @@ export class CircusAcrobatMiniGame extends MiniGame {
         }
 
         // 起跳 (腾空翻滚无敌)
-        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW'] || btns.justA) && this.player.isGrounded) {
+        if ((actionPressed || justKeys.ArrowUp || justKeys.KeyW) && this.player.isGrounded) {
           this.player.vy = -680;
           this.player.isGrounded = false;
           this.player.action = 'jump';
@@ -265,6 +278,7 @@ export class CircusAcrobatMiniGame extends MiniGame {
           } else if (this.player.stunTimer <= 0) {
             prop.alive = false;
             this.combo++;
+            this.caughtProps++;
             let pts = 150;
             if (prop.type === 'ball') pts = 300;
             else if (prop.type === 'fan') pts = 220;
@@ -302,21 +316,15 @@ export class CircusAcrobatMiniGame extends MiniGame {
 
       const naturalWobble = Math.sin(this.animTime * 3.0) * 28;
       this.balanceVelocity += (push + naturalWobble) * dt;
-      this.balanceVelocity *= 0.94;
+      this.balanceVelocity *= Math.pow(0.94, dt * 60);
       this.balance += this.balanceVelocity * dt;
       this.balance = Math.max(-100, Math.min(100, this.balance));
 
       this.player.x = 640 + (this.balance / 100) * 160;
-      this.player.y = 220 + Math.abs(this.balance / 100) * 15;
+      this.player.y = 240 + Math.abs(this.balance / 100) * 15;
 
-      // POSE 提示与触发
-      this.posePromptTimer -= dt;
-      if (this.posePromptTimer <= 0 && this.player.poseTimer <= 0) {
-        this.fx.toast('✨ 黄金时机！按 [空格/A] 摆出【天狗大展翅】压轴 POSE！', 2200);
-        this.posePromptTimer = 3.5;
-      }
-
-      if ((keys['Space'] || keys['KeyJ'] || btns.justA) && this.player.poseTimer <= 0) {
+      // 提示固定在操作区，不用反复弹出的 toast 遮住重心条。
+      if (previousAct === 2 && actionPressed && this.player.poseTimer <= 0) {
         if (Math.abs(this.balance) < 55) {
           // 成功摆出华丽 POSE
           this.player.action = 'pose';
@@ -345,16 +353,14 @@ export class CircusAcrobatMiniGame extends MiniGame {
     if (this.act === 3) {
       if (!this.pyramidCollapsed) {
         // 等待玩家按下飞扑按键
-        if (keys['Space'] || keys['KeyJ'] || btns.justA || pointer.down) {
+        const clickedFogg = pointer.justDown && pointer.x > 940 && pointer.x < 1180 && pointer.y > 360 && pointer.y < 600;
+        if (previousAct === 3 && this.timer > 0 && (actionPressed || clickedFogg)) {
           this.pyramidCollapsed = true;
           this.diveProgress = 0;
           this.diveStartX = this.player.x;
           this.diveStartY = this.player.y;
           this.sound.playSteamWhistle();
-          this.sound.playVictory();
-          if (this.camera) this.camera.addTrauma(0.6);
-          this.fx.flashRed(150);
-          this.fx.toast('💥 金字塔轰然倒塌！路路通大喊「主人！」纵身大飞扑！', 4000);
+          if (this.camera) this.camera.addTrauma(0.25);
           physicsDebris.spawnCoinFountain(640, 500, 30);
         }
       } else {
@@ -374,38 +380,33 @@ export class CircusAcrobatMiniGame extends MiniGame {
         if (t >= 1.0) {
           // 扑入怀中，胜利完成
           this.act = 4;
+          this.endTimer = 1.5;
           this.sound.playVictory();
           this.fx.addFloatText(this.vipX, this.vipY - 60, '❤️ 福克先生！我终于找到您了！', '#ffd700');
           physicsDebris.spawnCoinFountain(this.vipX, this.vipY, 40);
-          setTimeout(() => this.finishGame(), 1500);
         }
       }
     }
 
-    if (this.timer <= 0 && this.act < 4) {
+    if (this.timer <= 0 && !this.pyramidCollapsed) {
       this.finishGame();
     }
   }
 
   finishGame() {
-    this.running = false;
-    const isSuccess = this.act >= 3 || this.score > 2000;
-    const rank = this.act === 4 && this.score > 3500 ? 'S' : (isSuccess ? 'A' : 'B');
-    const daysDelta = rank === 'S' ? -0.5 : 0;
-
-    this.sound.playVictory();
-
-    setTimeout(() => {
-      this.complete({
-        result: isSuccess ? 'perfect' : 'good',
-        rank,
-        score: this.score + 1500,
-        daysDelta,
-        moneyDelta: 0,
-        flags: { circusReunited: true, passedYokohamaCircus: true },
-        comment: '让·路路通：「福克先生！艾娥达夫人！我可算把你们给盼来了！我们这就上格兰特将军号，横渡太平洋！」'
-      });
-    }, 1000);
+    if (!this.running || this.paused || this.completed) return;
+    const reunited = this.act === 4;
+    const performed = reunited && this.caughtProps >= 3 && this.poseSuccessCount >= 2;
+    this.complete({
+      reunited, result: performed ? 'perfect' : reunited ? 'good' : 'miss',
+      rank: performed ? 'S' : reunited ? 'A' : 'B',
+      score: this.score + (reunited ? 1500 : 0),
+      daysDelta: performed ? -0.5 : reunited ? 0 : 0.5, moneyDelta: 0,
+      flags: { circusReunited: reunited, passedYokohamaCircus: performed },
+      comment: reunited
+        ? `接住 ${this.caughtProps} 件道具，稳稳摆出 ${this.poseSuccessCount} 次姿势。路路通跃下人梯，与福克和艾娥达重聚。${performed ? '演出赢来掌声，大家还追回了半天。' : '表演未必完美，找回同伴才是这一站最重要的事。'}`
+        : '幕布落下，路路通还留在台上，错过了向福克相认的机会。可重试最后一场演出；主线也可多用半天到后台寻找。'
+    });
   }
 
   render(ctx) {
@@ -468,7 +469,7 @@ export class CircusAcrobatMiniGame extends MiniGame {
 
       for (let lvl = 1; lvl <= 4; lvl++) {
         const count = 5 - lvl;
-        const ly = -lvl * 75;
+        const ly = -lvl * 70;
         for (let c = 0; c < count; c++) {
           const cx = (c - (count - 1) / 2) * 65;
           SpriteEngine.drawTenguAcrobat(ctx, cx, ly, 105, 105, (c % 2 === 0 ? 0.05 : -0.05));
@@ -518,69 +519,75 @@ export class CircusAcrobatMiniGame extends MiniGame {
     const w = this.canvas.width;
     ctx.save();
 
-    // 顶部莳绘黑金控制面板
+    // 位于全局怀表下方，不能再把幕次、重心条藏在 HUD 后面。
     ctx.fillStyle = 'rgba(18, 8, 12, 0.92)';
     ctx.strokeStyle = '#d4af37';
     ctx.lineWidth = 2;
-    ctx.fillRect(120, 15, w - 240, 52);
-    ctx.strokeRect(120, 15, w - 240, 52);
+    ctx.fillRect(32, 86, w - 64, 78);
+    ctx.strokeRect(32, 86, w - 64, 78);
 
     // 幕次指示
     ctx.fillStyle = '#ffd700';
-    ctx.font = '900 16px "Baskerville", serif';
+    ctx.font = 'bold 22px "Baskerville", serif';
     ctx.textAlign = 'left';
     const actNames = [
       '',
-      '第 1 幕：长鼻接球连击',
-      '第 2 幕：五层高空叠罗汉',
-      '第 3 幕：主仆重聚大飞扑！',
-      '终幕：重聚凯旋登船！'
+      '第一幕 · 长鼻接道具',
+      '第二幕 · 稳住人梯',
+      '第三幕 · 福克就在台下',
+      '终幕 · 终于找到你了'
     ];
-    ctx.fillText('🎭 ' + actNames[this.act], 145, 46);
+    ctx.fillText(actNames[this.act], 54, 117);
+    ctx.font = '18px "Baskerville", serif';
+    ctx.fillStyle = '#eadabb';
+    ctx.fillText(`接道具 ${this.caughtProps} / 3 · 摆姿势 ${this.poseSuccessCount} / 2 · 重聚后达标可获 S 级`, 54, 146);
 
     // 平衡指示条 (第 2 幕)
     if (this.act === 2) {
       const barX = 460;
       const barW = 240;
       ctx.fillStyle = '#2b151e';
-      ctx.fillRect(barX, 28, barW, 16);
+      ctx.fillRect(barX, 103, barW, 16);
       ctx.strokeStyle = '#d4af37';
       ctx.lineWidth = 1.5;
-      ctx.strokeRect(barX, 28, barW, 16);
+      ctx.strokeRect(barX, 103, barW, 16);
 
       // 安全中区 (更宽更友好的绿色安全区)
       ctx.fillStyle = 'rgba(80, 227, 194, 0.45)';
-      ctx.fillRect(barX + barW / 2 - 45, 29, 90, 14);
+      ctx.fillRect(barX + barW / 2 - 60.5, 104, 121, 14);
 
       const cursorX = barX + barW / 2 + (this.balance / 100) * (barW / 2 - 10);
       ctx.fillStyle = Math.abs(this.balance) > 55 ? '#ff4d4d' : '#50e3c2';
       ctx.beginPath();
-      ctx.arc(cursorX, 36, 8, 0, Math.PI * 2);
+      ctx.arc(cursorX, 111, 8, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      if (Math.abs(this.balance) < 55) {
-        ctx.fillStyle = '#ffd700';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('✨ 按 [空格/A] 摆 POSE!', barX + barW / 2, 60);
-      }
     } else if (this.act === 1) {
-      ctx.fillStyle = '#ff4d4d';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.fillText('🔥 COMBO x' + this.combo + ' (避开 ⚠️ 危险红圈)', 430, 46);
+      ctx.fillStyle = '#eadabb';
+      ctx.font = '18px "Baskerville", serif';
+      ctx.fillText('连击 ' + this.combo + ' · 避开红圈', 470, 117);
     } else if (this.act === 3) {
       ctx.fillStyle = '#50e3c2';
-      ctx.font = '900 14px sans-serif';
-      ctx.fillText('👉 按 [空格 / 触屏] 飞扑向福克先生！', 430, 46);
+      ctx.font = 'bold 18px "Baskerville", serif';
+      ctx.fillText(this.pyramidCollapsed ? '路路通正向福克飞扑' : '点右侧福克，或轻按空格 / A', 450, 117);
     }
 
     // 战绩得分与倒计时
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffe87c';
-    ctx.font = '900 15px "Baskerville", serif';
-    ctx.fillText('🏆 ' + this.score + ' PTS | ⏱️ ' + Math.ceil(this.timer) + 's', w - 145, 46);
+    ctx.font = 'bold 20px "Baskerville", serif';
+    ctx.fillText(this.score + ' 分 · ' + Math.ceil(this.timer) + ' 秒', w - 54, 117);
+
+    if (!this.input.isTouchDevice && this.act < 4 && !this.pyramidCollapsed) {
+      ctx.fillStyle = '#d4bd80';
+      ctx.fillRect(430, 637, 420, 60);
+      ctx.fillStyle = '#241b17';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 24px "Baskerville", serif';
+      ctx.fillText(this.act === 1 ? '空格 · 起跳' : this.act === 2 ? '绿区内按空格 · 摆姿势' : '空格 · 向福克飞扑', 640, 675);
+    }
 
     ctx.restore();
   }

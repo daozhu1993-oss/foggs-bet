@@ -50,10 +50,13 @@ export class PassportView {
     this.renderStamps();
     this.drawPortrait();
     sound.playCardFlip();
+    events.emit('ui:overlay', { id: 'passport', open: true });
   }
 
   hide() {
     if (this.modal) this.modal.classList.add('hidden');
+    document.activeElement?.blur();
+    events.emit('ui:overlay', { id: 'passport', open: false });
   }
 
   renderStamps() {

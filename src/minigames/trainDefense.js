@@ -93,11 +93,13 @@ export class TrainDefenseMiniGame extends MiniGame {
     this.camera.follow(640, 360, true);
 
     this.input.configureUI({
-      showDpad: true,
+      showDpad: false,
       showA: true,
       showB: true,
+      showC: true,
       labelA: '拔枪射击 [J/空格]',
-      labelB: '快速换弹 [R]'
+      labelB: '快速换弹 [R]',
+      labelC: '专注 [E]'
     });
 
     if (this.sound.music) this.sound.music.playTheme('overdrive');
@@ -107,18 +109,20 @@ export class TrainDefenseMiniGame extends MiniGame {
 
   update(rawDt) {
     if (!this.running || this.paused) return;
-    let dt = Math.max(0.0001, rawDt || 0.016);
+    const realDt = Math.min(0.05, Math.max(0, Number.isFinite(rawDt) ? rawDt : 0));
+    if (!realDt) return;
+    let dt = realDt;
 
     // 子弹时间慢速流逝
     if (this.bulletTime.active) {
       dt *= 0.25;
-      this.bulletTime.meter = Math.max(0, this.bulletTime.meter - rawDt * 30);
+      this.bulletTime.meter = Math.max(0, this.bulletTime.meter - realDt * 30);
       if (this.bulletTime.meter <= 0) {
         this.bulletTime.active = false;
         this.fx.toast('⏳ 子弹时间结束！', 1200);
       }
     } else {
-      this.bulletTime.meter = Math.min(100, this.bulletTime.meter + rawDt * 12);
+      this.bulletTime.meter = Math.min(100, this.bulletTime.meter + realDt * 12);
     }
 
     this.timer -= dt;
@@ -126,6 +130,7 @@ export class TrainDefenseMiniGame extends MiniGame {
     this.trackOffset += dt * this.trainSpeed * 24;
 
     if (this.revolver.recoilTimer > 0) this.revolver.recoilTimer -= dt;
+    if (!this.revolver.ammo && !this.revolver.isReloading && this.revolver.recoilTimer <= 0) this.startReload();
 
     // 换弹计时
     if (this.revolver.isReloading) {
@@ -172,6 +177,7 @@ export class TrainDefenseMiniGame extends MiniGame {
     const btns = inp ? (inp.buttons || {}) : {};
     const axis = inp ? (inp.axis || { x: 0, y: 0 }) : { x: 0, y: 0 };
     const pointer = inp ? (inp.pointer || {}) : {};
+    const justKeys = inp?.justKeys || {};
 
     // 1. 准星平滑操纵
     let moveX = 0;
@@ -184,7 +190,7 @@ export class TrainDefenseMiniGame extends MiniGame {
     this.crosshair.x += moveX * 650 * dt;
     this.crosshair.y += moveY * 650 * dt;
 
-    if (pointer.down) {
+    if (pointer.down || pointer.justDown) {
       this.crosshair.x = pointer.x;
       this.crosshair.y = pointer.y;
     }
@@ -193,12 +199,12 @@ export class TrainDefenseMiniGame extends MiniGame {
     this.crosshair.y = Math.max(70, Math.min(540, this.crosshair.y));
 
     // 2. 换弹 (R / Button B)
-    if ((keys['KeyR'] || btns.justB) && !this.revolver.isReloading && this.revolver.ammo < 6) {
+    if (justKeys.KeyR || (btns.justB && !justKeys.ShiftLeft && !justKeys.ShiftRight)) {
       this.startReload();
     }
 
     // 3. 启动子弹时间 (E / Shift / Button C)
-    if ((keys['KeyE'] || keys['ShiftLeft'] || keys['ShiftRight'] || btns.justC) && this.bulletTime.meter > 25) {
+    if ((justKeys.KeyE || justKeys.ShiftLeft || justKeys.ShiftRight || btns.justC) && (this.bulletTime.active || this.bulletTime.meter > 25)) {
       this.bulletTime.active = !this.bulletTime.active;
       if (this.bulletTime.active) {
         this.sound.playWhoosh();
@@ -207,11 +213,8 @@ export class TrainDefenseMiniGame extends MiniGame {
     }
 
     // 4. 左轮射击
-    if (keys['Space'] || keys['KeyJ'] || btns.justA || pointer.justDown) {
+    if (justKeys.Space || justKeys.KeyJ || btns.justA || pointer.justDown) {
       this.fireRevolver();
-      keys['Space'] = false;
-      keys['KeyJ'] = false;
-      if (pointer.justDown) pointer.justDown = false;
     }
 
     // 5. 敌人与投掷物生成系统
@@ -349,6 +352,7 @@ export class TrainDefenseMiniGame extends MiniGame {
   }
 
   fireRevolver() {
+    if (!this.running || this.paused || this.completed || this.revolver.recoilTimer > 0) return;
     if (this.revolver.isReloading) {
       this.fx.toast('⚠️ 正在快速填弹中...', 800);
       return;
@@ -469,12 +473,10 @@ export class TrainDefenseMiniGame extends MiniGame {
       }
     }
 
-    if (this.revolver.ammo === 0) {
-      setTimeout(() => { if (this.revolver.ammo === 0) this.startReload(); }, 200);
-    }
   }
 
   startReload() {
+    if (!this.running || this.paused || this.completed || this.revolver.isReloading || this.revolver.ammo >= this.revolver.maxAmmo) return;
     this.revolver.isReloading = true;
     this.revolver.reloadTimer = 0.85;
     this.sound.playWhoosh();
@@ -482,25 +484,20 @@ export class TrainDefenseMiniGame extends MiniGame {
   }
 
   finishGame() {
-    this.running = false;
-    const isSuccess = this.trainHealth > 0;
+    if (!this.running || this.paused || this.completed) return;
+    const isSuccess = this.timer <= 0 && this.trainHealth > 0;
     const rank = isSuccess && this.trainHealth > 65 ? 'S' : (isSuccess ? 'A' : 'B');
-
-    this.sound.playVictory();
-    this.sound.playSteamWhistle();
-
-    setTimeout(() => {
-      this.complete({
-        result: isSuccess ? 'perfect' : 'pass',
+    if (isSuccess) { this.sound.playVictory(); this.sound.playSteamWhistle(); }
+    this.complete({
+        reached: isSuccess, result: rank === 'S' ? 'perfect' : isSuccess ? 'good' : 'miss',
         rank,
-        score: this.score + Math.floor(this.trainHealth * 15) + Math.floor(this.trainSpeed * 20),
-        daysDelta: 0,
+        score: Math.round(this.score + (isSuccess ? Math.max(0, this.trainHealth) * 15 + this.trainSpeed * 20 : 0)),
+        daysDelta: rank === 'S' ? -0.5 : isSuccess ? 0 : 1,
         comment: isSuccess
-          ? '★ 太平洋大铁路机车推满百迈极速，如同一枚呼啸的钢铁炮弹成功飞跃断裂危桥！'
-          : '危急关头，让·路路通冒死爬进车底摘下机车连挂销，迫使列车在基尔尼堡哨所前险险停稳！',
-        flags: { trainBridgeCleared: true }
+          ? `列车穿过了峡谷，车体还剩 ${Math.ceil(this.trainHealth)}%。${rank === 'S' ? '守住了大部分车厢，少花半天整备。' : '抵达后检查受损车厢，按原计划续行。'}`
+          : '车体严重受损，列车提前停下，没有完成过桥。旅伴平安；主线可重试，或多用一天维修换乘。',
+        flags: { trainBridgeCleared: isSuccess }
       });
-    }, 1000);
   }
 
   render(ctx) {
@@ -663,6 +660,7 @@ export class TrainDefenseMiniGame extends MiniGame {
   drawWesternArcadeHUD(ctx) {
     const w = this.canvas.width;
     ctx.save();
+    ctx.translate(0, 66);
 
     // 1. 左侧：列车车速仪表与断桥飞跃提示 (MPH Speedometer)
     ctx.fillStyle = 'rgba(15, 10, 6, 0.94)';
@@ -678,7 +676,7 @@ export class TrainDefenseMiniGame extends MiniGame {
 
     ctx.fillStyle = '#a09080';
     ctx.font = '12px sans-serif';
-    ctx.fillText(this.phase === 3 ? '🔥 百迈极限飞跃冲刺中！' : '目标: 突破 100 MPH 飞跃断桥', 55, 82);
+    ctx.fillText(this.phase === 3 ? '最后一段 · 守住车体' : '优先拦截炸药与落石', 55, 82);
 
     // 2. 中间：列车耐久度 (Boiler & Car Health Bar)
     const barW = 340;
@@ -696,9 +694,9 @@ export class TrainDefenseMiniGame extends MiniGame {
     ctx.fillRect(w / 2 - barW / 2 + 3, 33, (barW - 6) * hpProg, 22);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('机车装甲耐久: ' + Math.floor(this.trainHealth) + '% | 倒计时: ' + Math.ceil(this.timer) + 's', w / 2, 65);
+    ctx.fillText('车体 ' + Math.max(0, Math.ceil(this.trainHealth)) + '% · 余 ' + Math.max(0, Math.ceil(this.timer)) + ' 秒', w / 2, 65);
 
     // 3. 右侧：左轮 6 发轮盘弹仓 (6-Chamber Cylinder UI)
     ctx.fillStyle = 'rgba(15, 10, 6, 0.94)';

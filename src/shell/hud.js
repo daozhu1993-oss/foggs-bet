@@ -3,6 +3,7 @@ import { TimeManager } from '../core/time.js';
 import { MoneyManager } from '../core/money.js';
 import { sound } from '../engine/audio.js';
 import { events } from '../core/events.js';
+import { getJourneyStatus } from '../core/journey.js';
 
 export class HUD {
   constructor() {
@@ -53,6 +54,8 @@ export class HUD {
   update() {
     const state = gameState.get();
     const remaining = gameState.getRemainingDays();
+    const progress = document.getElementById('hud-journey-status');
+    if (progress) progress.textContent = getJourneyStatus(state).pace;
 
     if (this.daysText) {
       this.daysText.textContent = TimeManager.formatDays(remaining);

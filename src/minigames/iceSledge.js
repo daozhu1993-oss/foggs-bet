@@ -53,7 +53,7 @@ export class IceSledgeMiniGame extends MiniGame {
     this.trackProps = [];
     this.initTrackProps();
 
-    this.timer = 45.0;
+    this.timer = 25.0;
     this.score = 0;
     this.combo = 0;
     this.comboTimer = 0;
@@ -105,8 +105,10 @@ export class IceSledgeMiniGame extends MiniGame {
     this.rivals[0].distance = 120;
     this.rivals[1].distance = 280;
     this.rivals[2].distance = 540;
+    this.rivals.forEach(r => { r.overtaken = false; });
+    this.initTrackProps();
 
-    this.timer = 45.0;
+    this.timer = 25.0;
     this.score = 0;
     this.combo = 0;
     this.comboTimer = 0;
@@ -147,9 +149,19 @@ export class IceSledgeMiniGame extends MiniGame {
     return '奥马哈冲刺段';
   }
 
+  projectTrackPoint(relDist, lane) {
+    const t = Math.max(0, Math.min(1, 1 - relDist / 340));
+    const curveOff = this.getCurvatureAt(this.player.distance) * Math.pow(1 - t, 1.5) * 140;
+    return {
+      x: 640 + curveOff + lane * (70 + Math.pow(t, 1.2) * 310),
+      y: 300 + (560 - 300) * Math.pow(t, 1.7)
+    };
+  }
+
   update(rawDt) {
     if (!this.running || this.paused) return;
-    const dt = Math.max(0.0001, rawDt || 0.016);
+    const dt = Math.min(0.05, Math.max(0, Number.isFinite(rawDt) ? rawDt : 0));
+    if (!dt) return;
 
     this.timer -= dt;
     this.animTime += dt;
@@ -263,7 +275,7 @@ export class IceSledgeMiniGame extends MiniGame {
 
     // 7. 里程推进
     this.player.distance += this.player.speed * 2.4 * dt;
-    this.score += Math.floor(this.player.speed * 1.6 * dt);
+    this.score += this.player.speed * 1.6 * dt;
 
     // 8. 竞争对手 AI 模拟
     let aheadCount = 0;
@@ -285,7 +297,8 @@ export class IceSledgeMiniGame extends MiniGame {
         }
       }
 
-      if (this.player.distance > r.distance && this.player.distance - r.distance < 8) {
+      if (!r.overtaken && this.player.distance > r.distance) {
+        r.overtaken = true;
         this.sound.playVictory();
         this.combo++;
         this.comboTimer = 3.0;
@@ -349,25 +362,20 @@ export class IceSledgeMiniGame extends MiniGame {
   }
 
   finishGame() {
-    this.running = false;
+    if (!this.running || this.paused || this.completed) return;
     const isSuccess = this.player.distance >= this.trackLength;
     const rank = isSuccess && this.rankPosition === 1 ? 'S' : (isSuccess ? 'A' : 'B');
-
-    this.sound.playVictory();
-    this.sound.playSteamWhistle();
-
-    setTimeout(() => {
-      this.complete({
-        result: isSuccess ? 'perfect' : 'pass',
+    if (isSuccess) { this.sound.playVictory(); this.sound.playSteamWhistle(); }
+    this.complete({
+        reached: isSuccess, result: rank === 'S' ? 'perfect' : isSuccess ? 'good' : 'miss',
         rank,
-        score: this.score + (5 - this.rankPosition) * 500 + Math.floor(this.player.speed * 20),
-        daysDelta: rank === 'S' ? -0.5 : 0,
+        score: Math.round(this.score + (isSuccess ? (5 - this.rankPosition) * 500 + this.player.speed * 20 : 0)),
+        daysDelta: rank === 'S' ? -0.5 : isSuccess ? 0 : 1,
         comment: isSuccess
-          ? '★ 马奇风帆雪橇以第 ' + this.rankPosition + ' 名率先横穿 2200 码冰原赛道，成功冲入奥马哈车站！'
-          : '雪橇滑行抵达内布拉斯加东部，顺利换乘快车直扑纽约！',
-        flags: { iceSledgeWon: true, rank1st: this.rankPosition === 1 }
+          ? `风帆雪橇以第 ${this.rankPosition} 名抵达奥马哈车站。${rank === 'S' ? '抢到更早的接驳，追回半天。' : '赶上接驳，继续转车去纽约。'}`
+          : `接驳窗口结束时，雪橇只走完 ${Math.min(99, Math.floor(this.player.distance / this.trackLength * 100))}% 的赛道，尚未到奥马哈。主线可重试，或多用一天换乘续行。`,
+        flags: { iceSledgeWon: isSuccess, rank1st: isSuccess && this.rankPosition === 1 }
       });
-    }, 1000);
   }
 
   render(ctx) {
@@ -396,8 +404,7 @@ export class IceSledgeMiniGame extends MiniGame {
       const relDist = r.distance - this.player.distance;
       if (relDist > -30 && relDist < 260) {
         const depthScale = Math.max(0.3, 1.0 - relDist / 280);
-        const rx = 640 + (r.x * 420 + this.getCurvatureAt(r.distance) * (260 - relDist) * 0.3) * depthScale;
-        const ry = 540 - relDist * 1.1;
+        const { x: rx, y: ry } = this.projectTrackPoint(relDist, r.x);
 
         ctx.save();
         ctx.translate(rx, ry);
@@ -568,9 +575,7 @@ export class IceSledgeMiniGame extends MiniGame {
       const relDist = prop.distance - this.player.distance;
       if (relDist > 0 && relDist < 340 && !prop.collected) {
         const t = Math.max(0, Math.min(1.0, 1.0 - relDist / 340));
-        const py = horizonY + (h - horizonY) * Math.pow(t, 1.7);
-        const curveOff = currentCurve * Math.pow(1 - t, 1.5) * 140;
-        const px = 640 + curveOff + prop.x * (70 + Math.pow(t, 1.2) * 520);
+        const { x: px, y: py } = this.projectTrackPoint(relDist, prop.x);
         const pSize = 20 + t * 50;
 
         if (prop.type === 'boost') {
@@ -593,6 +598,7 @@ export class IceSledgeMiniGame extends MiniGame {
   drawArcadeRacerHUD(ctx) {
     const w = this.canvas.width;
     ctx.save();
+    ctx.translate(0, 66);
 
     // 1. 左侧：时速表与赛段提示
     ctx.fillStyle = 'rgba(15, 25, 35, 0.94)';
@@ -607,8 +613,8 @@ export class IceSledgeMiniGame extends MiniGame {
     ctx.fillText('🎿 ' + Math.floor(this.player.speed) + ' MPH', 55, 54);
 
     ctx.fillStyle = '#00e5ff';
-    ctx.font = '11px sans-serif';
-    ctx.fillText(this.getSegmentLabelAt(this.player.distance), 55, 80);
+    ctx.font = '14px sans-serif';
+    ctx.fillText(this.getSegmentLabelAt(this.player.distance).split(' (')[0], 55, 80);
 
     // 2. 中间：奥马哈赛程进度与名次
     const barW = 340;
@@ -626,9 +632,9 @@ export class IceSledgeMiniGame extends MiniGame {
     ctx.fillRect(w / 2 - barW / 2 + 3, 28, (barW - 6) * distProg, 20);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('🏁 排名: 第 ' + this.rankPosition + ' 位 | 赛程: ' + Math.floor(this.player.distance) + ' / ' + this.trackLength + ' 码 | 倒计时: ' + Math.ceil(this.timer) + 's', w / 2, 64);
+    ctx.fillText('第 ' + this.rankPosition + ' 名 · ' + Math.floor(distProg * 100) + '% · 余 ' + Math.max(0, Math.ceil(this.timer)) + ' 秒', w / 2, 64);
 
     // 3. 右侧：飘移集气小喷槽
     ctx.fillStyle = 'rgba(15, 25, 35, 0.94)';

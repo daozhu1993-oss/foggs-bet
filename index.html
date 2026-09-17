@@ -53,6 +53,7 @@
             <span class="loc-pin">📍</span>
             <span class="loc-text" id="hud-location-text">伦敦 · 改良俱乐部</span>
           </div>
+          <div id="hud-journey-status" class="journey-status">与原定行程持平</div>
         </div>
 
         <div class="hud-right">
@@ -60,7 +61,7 @@
           <button id="btn-passport" class="hud-btn" title="查看护照钢印">📜 护照</button>
           <button id="btn-arcade-hud" class="hud-btn hidden" title="游乐场自由挑战">🎪 游乐场</button>
           <button id="btn-sound" class="hud-btn" title="声音开关">🔊 音效</button>
-          <button id="btn-pause" class="hud-btn" title="暂停游戏">⏸️</button>
+          <button id="btn-pause" class="hud-btn" title="暂停游戏" aria-label="暂停游戏" aria-pressed="false">⏸️</button>
         </div>
       </header>
 
@@ -149,7 +150,7 @@
             <canvas id="map-canvas" width="1000" height="520"></canvas>
           </div>
           <div class="map-footer" id="map-footer-info">
-            当前航段：伦敦 ➔ 苏伊士 ➔ 印度孟买与加尔各答（MVP 切片）
+            航线进度会随每一段已确认的行程更新。
           </div>
         </div>
       </div>
@@ -188,11 +189,26 @@
         </div>
       </div>
 
-      <!-- 关卡过关结算卡 (支持随时重新挑战) -->
+      <div id="pause-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div class="pause-card">
+          <span class="briefing-tag">怀表暂歇</span>
+          <h2 id="pause-title">旅程等你回来</h2>
+          <h3 id="pause-challenge"></h3>
+          <p id="pause-note"></p>
+          <div class="pause-actions">
+            <button id="btn-resume-game" class="gold-btn">继续这一程</button>
+            <button id="btn-retry-active" class="secondary-btn">重新练这一关</button>
+            <button id="btn-exit-game" class="secondary-btn">返回封面 · 保留进度</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 先展示待确认账单，玩家继续后才结算 -->
       <div id="result-modal" class="modal-overlay hidden">
         <div class="result-card">
           <div class="result-ribbon" id="result-rating-ribbon">PERFECT 完美通关</div>
           <h2 id="result-leg-title">第一关 · 伦敦→苏伊士</h2>
+          <p id="result-score-detail" class="result-score-detail"></p>
           <div class="result-stats-row">
             <div class="stat-box">
               <span class="stat-name">耗用 / 节省时间</span>
@@ -207,6 +223,7 @@
               <span class="stat-val" id="result-total-days-left">73.5 天</span>
             </div>
           </div>
+          <p id="result-journey-impact" class="result-journey-impact"></p>
           <p class="result-comment" id="result-comment">福克：「分秒不差，正如怀表所示。路路通，备好行李去往下一站。」</p>
           <div class="result-actions">
             <button id="btn-retry-leg" class="secondary-btn">🔄 重新挑战本关</button>
@@ -219,10 +236,10 @@
       <div id="arcade-modal" class="modal-overlay hidden">
         <div class="arcade-box">
           <div class="modal-title-bar">
-            <h3>🎪 探险游乐场 · 自由挑战室 (MiniGame Arcade)</h3>
+            <h3>旅途练习室 · 自由挑战</h3>
             <button class="modal-close-btn" id="btn-close-arcade">✕</button>
           </div>
-          <p class="arcade-subtitle">已在主线探索并解锁的小游戏可在此随心所欲反复畅玩、磨练操作与冲击最高分记录！</p>
+          <p class="arcade-subtitle">13 个独立挑战均可直接练习。只记录最高分，不改变主线存档。</p>
           <div class="arcade-grid">
             <div class="arcade-card" id="arcade-card-whist" data-game="whist">
               <div class="arcade-card-preview whist-bg">🎴</div>
@@ -241,7 +258,7 @@
               <div class="arcade-card-preview parkour-bg">🏃</div>
               <div class="arcade-card-info">
                 <h4>关1 · 多佛码头追船跑酷</h4>
-                <p>三阶段纵深跑酷、二段跳、滑铲、斗Fix</p>
+                <p>先练跳跃与滑铲，再赶上最后的跳板</p>
                 <div class="arcade-card-meta">
                   <span class="badge-tag">动作反应</span>
                   <span class="best-score" id="best-parkour">最佳用时: --</span>
@@ -267,7 +284,7 @@
               <div class="arcade-card-preview elephant-bg">🐘</div>
               <div class="arcade-card-info">
                 <h4>关3a · 印度雨林巨象破障</h4>
-                <p>巨象物理惯性、践踏泥潭、蛮力粉碎枯木</p>
+                <p>越过石障、低头躲藤蔓，抵达林间营地</p>
                 <div class="arcade-card-meta">
                   <span class="badge-tag">重量破障</span>
                   <span class="best-score" id="best-elephant">最佳用时: --</span>
@@ -280,7 +297,7 @@
               <div class="arcade-card-preview stealth-bg">🛕</div>
               <div class="arcade-card-info">
                 <h4>关3b · 火祭神庙夜潜营救</h4>
-                <p>暗黑迷宫、动态火把光影、Fogg掷金币引怪</p>
+                <p>暗处潜入、解开锁链，与福克接应撤离</p>
                 <div class="arcade-card-meta">
                   <span class="badge-tag">双人协作</span>
                   <span class="best-score" id="best-stealth">最佳营救: --</span>
@@ -305,10 +322,10 @@
             <div class="arcade-card" id="arcade-card-typhoon" data-game="typhoonSailing">
               <div class="arcade-card-preview steam-bg">⛵</div>
               <div class="arcade-card-info">
-                <h4>关5 · 坦克德尔号台风搏击</h4>
-                <p>南中国海狂暴台风操帆、穿云信号弹</p>
+                <h4>关5 · 南海追船</h4>
+                <p>掌舵借风、收帆护船、上海发信号</p>
                 <div class="arcade-card-meta">
-                  <span class="badge-tag">航海竞速</span>
+                  <span class="badge-tag">航海应变</span>
                   <span class="best-score" id="best-typhoonSailing">最高分: 0</span>
                 </div>
               </div>
@@ -319,7 +336,7 @@
               <div class="arcade-card-preview elephant-bg">🎭</div>
               <div class="arcade-card-info">
                 <h4>关6 · 横滨长鼻天狗杂技</h4>
-                <p>高空叠罗汉力矩平衡、飞扑相认重聚</p>
+                <p>接道具、稳住人梯、主动与福克相认</p>
                 <div class="arcade-card-meta">
                   <span class="badge-tag">物理平衡</span>
                   <span class="best-score" id="best-circusAcrobat">最高分: 0</span>
@@ -332,7 +349,7 @@
               <div class="arcade-card-preview parkour-bg">🥊</div>
               <div class="arcade-card-info">
                 <h4>关7 · 旧金山选战大乱斗</h4>
-                <p>街头酒馆桌椅乱飞、法式拐杖格挡突围</p>
+                <p>走位闪避、出拳踢击、掩护同伴脱身</p>
                 <div class="arcade-card-meta">
                   <span class="badge-tag">动作防御</span>
                   <span class="best-score" id="best-sanFranciscoBrawl">最高分: 0</span>
@@ -371,9 +388,9 @@
               <div class="arcade-card-preview steam-bg">🔥</div>
               <div class="arcade-card-info">
                 <h4>关9 · 亨丽埃塔号拆船大燃烧</h4>
-                <p>煤炭耗尽拆甲板船舱投炉、烈火冲滩利物浦</p>
+                <p>四轨节奏、积累连击、把燃料送进炉膛</p>
                 <div class="arcade-card-meta">
-                  <span class="badge-tag">载具拆解</span>
+                  <span class="badge-tag">四轨节奏</span>
                   <span class="best-score" id="best-atlanticBurning">最高分: 0</span>
                 </div>
               </div>
@@ -383,14 +400,14 @@
             <div class="arcade-card" id="arcade-card-finale" data-game="londonFinale">
               <div class="arcade-card-preview whist-bg">👑</div>
               <div class="arcade-card-info">
-                <h4>关10 · 伦敦日界线 80 秒绝杀</h4>
-                <p>跨越 360° 夺回一天、马车破门终极胜利</p>
+                <h4>关10 · 伦敦最后一程</h4>
+                <p>转动经度找回一天、40 秒马车冲刺</p>
                 <div class="arcade-card-meta">
-                  <span class="badge-tag">终极大捷</span>
+                  <span class="badge-tag">驾车冲刺</span>
                   <span class="best-score" id="best-londonFinale">最高分: 0</span>
                 </div>
               </div>
-              <button class="arcade-play-btn">立即绝杀 ➔</button>
+              <button class="arcade-play-btn">赶回俱乐部 ➔</button>
             </div>
           </div>
         </div>
@@ -422,7 +439,7 @@
         <div class="title-content">
           <div class="title-kicker">1872 · AROUND THE WORLD IN EIGHTY DAYS</div>
           <h1 class="title-main">Fogg 的赌约</h1>
-          <p class="title-subtitle">八十天，两万英镑，一秒也不容差池的环球狂澜</p>
+          <p class="title-subtitle">八十天环游世界。你会为谁，停下怀表？</p>
 
           <div class="title-actor-preview">
             <div class="actor-card">
@@ -439,14 +456,14 @@
           </div>
 
           <div class="title-buttons">
-            <button id="btn-start-game" class="start-btn gold-btn">启程 · 开启主线探险 ➔</button>
-            <button id="btn-open-arcade" class="start-btn secondary-btn">🎪 探险游乐场</button>
+            <button id="btn-start-game" class="start-btn gold-btn">启程 · 立下八十天赌约 ➔</button>
+            <button id="btn-open-arcade" class="start-btn secondary-btn">先试一关 · 自由挑战</button>
             <button id="btn-load-game" class="start-btn secondary-btn hidden">继续未竟的旅程</button>
           </div>
 
           <div class="title-hints">
-            <span>💻 电脑：键盘 WASD / 方向键 / 空格 / K</span>
-            <span>📱 手机：屏幕虚拟摇杆与动作按键</span>
+            <span>每关先读玩法，准备好了再开始 · 支持键盘与触屏</span>
+            <span>航段完成后自动保存 · v96 手机双指与触控增强版</span>
           </div>
         </div>
       </div>

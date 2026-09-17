@@ -160,6 +160,12 @@ export class StealthRescueMiniGame extends MiniGame {
     this.aouda.rescued = false;
     this.aouda.locksRemaining = 3;
     this.isLockpicking = false;
+    this.lockDialAngle = 0;
+    this.lockTargetStart = Math.PI * 0.35;
+    this.lockWindow = this.config.rescuePlan === 'observe' ? 1.25 : 0.85;
+    this.lockTargetEnd = this.lockTargetStart + this.lockWindow;
+    this.lockSpeed = 3.2;
+    this.alertTimer = null;
     this.rajahShowTimer = 0;
     this.guardsFrozen = false;
 
@@ -171,7 +177,12 @@ export class StealthRescueMiniGame extends MiniGame {
     });
 
     this.foggCooldown = 0;
+    this.foggCooldownMax = this.config.rescuePlan === 'divert' ? 4 : 7;
+    this.distractionDuration = this.config.rescuePlan === 'divert' ? 7 : 4.5;
     this.distractionRipple = null;
+    this.torches.forEach(t => { t.lit = this.config.rescuePlan !== 'observe'; });
+    this.dog.isAlert = false;
+    this.guards.forEach(g => { g.exposure = 0; });
     physicsDebris.clear();
 
     this.camera.setWorldBounds(0, 1280, 0, 720);
@@ -185,34 +196,28 @@ export class StealthRescueMiniGame extends MiniGame {
       labelB: '水袋灭火'
     });
 
-    const foggBtn = document.getElementById('fogg-assist-btn-container');
-    if (foggBtn) foggBtn.classList.remove('hidden');
-
-    const distractBtn = document.getElementById('btn-fogg-distract');
-    if (distractBtn) {
-      distractBtn.onclick = () => this.triggerFoggDistract();
-    }
-
     if (this.sound.music) this.sound.music.playTheme('temple');
-    this.fx.toast('【暗夜神庙潜行】[草丛/暗处] 匿踪 | 背后 [空格/A] 击晕守卫 | [B/Q] 泼灭火把 | [C] 金币引怪！', 5000);
+    this.fx.toast(this.config.rescuePlan === 'observe'
+      ? '向导已查清暗路：两盏火把熄灭，锁扣的时机也更宽裕。'
+      : '福克在北门接应。按 C 让他引开守卫，再从南侧绕行。', 3000);
   }
 
   triggerFoggDistract() {
-    if (this.foggCooldown > 0) return;
+    if (!this.running || this.paused || this.detected || this.isLockpicking || this.foggCooldown > 0) return;
 
     this.foggCooldown = this.foggCooldownMax;
     this.sound.playCoinClink();
     if (this.camera) this.camera.addTrauma(0.2);
-    this.fx.toast('🪙 福克先生投掷了一枚黄铜金币！叮当脆响！', 2500);
+    this.fx.toast('福克敲响北门铜环。守卫转过头，轮到路路通行动了。', 2000);
 
-    const targetX = 620 + Math.random() * 140;
-    const targetY = 130 + Math.random() * 80;
+    const targetX = 680;
+    const targetY = 130;
     this.distractionRipple = { x: targetX, y: targetY, radius: 10, maxRadius: 240, alpha: 1.0 };
-    physicsDebris.spawnCoinFountain(targetX, targetY, 6);
 
     this.guards.forEach(guard => {
       if (!guard.knockedOut) {
-        guard.distractedTimer = 4.5;
+        guard.distractedTimer = this.distractionDuration;
+        guard.exposure = 0;
         guard.investigatePos = { x: targetX, y: targetY };
         guard.alertLevel = 1;
         guard.facingAngle = Math.atan2(targetY - guard.y, targetX - guard.x);
@@ -258,6 +263,15 @@ export class StealthRescueMiniGame extends MiniGame {
 
     this.animTime += dt;
     this.timer -= dt;
+    if (this.alertTimer !== null) {
+      this.alertTimer -= dt;
+      if (this.alertTimer <= 0) this.finishRescue(false);
+      return;
+    }
+    if (this.timer <= 0) {
+      this.finishRescue(false);
+      return;
+    }
     physicsDebris.update(dt);
 
     // 火把光晕微幅跳动
@@ -288,20 +302,20 @@ export class StealthRescueMiniGame extends MiniGame {
     }
 
     // 按键 [C] 投掷金币声东击西
-    if (this.input.input.keys['KeyC']) {
+    if (this.input.input.buttons.justC) {
       this.triggerFoggDistract();
       this.input.input.keys['KeyC'] = false;
     }
 
     // 按键 [B / Q] 泼灭火把
-    if (this.input.input.keys['KeyB'] || this.input.input.keys['KeyQ'] || this.input.input.buttons.justB) {
+    if (this.input.input.keys['KeyQ'] || this.input.input.buttons.justB) {
       this.extinguishNearestTorch();
       this.input.input.keys['KeyB'] = false;
       this.input.input.keys['KeyQ'] = false;
     }
 
     // 背后无声击晕守卫 [A / Space]
-    if (this.input.input.buttons.justA || this.input.input.keys['Space']) {
+    if (!this.isLockpicking && this.input.input.buttons.justA) {
       for (const g of this.guards) {
         if (!g.knockedOut) {
           const dist = Math.hypot(this.player.x - g.x, this.player.y - g.y);
@@ -335,7 +349,7 @@ export class StealthRescueMiniGame extends MiniGame {
         this.lockDialAngle -= Math.PI * 2;
       }
 
-      if (this.input.input.buttons.justA || this.input.input.pointer.justDown || this.input.input.keys['Space']) {
+      if (this.input.input.buttons.justA || this.input.input.pointer.justDown) {
         const inZone = this.lockDialAngle >= this.lockTargetStart && this.lockDialAngle <= this.lockTargetEnd;
         if (inZone) {
           this.aouda.locksRemaining--;
@@ -350,16 +364,17 @@ export class StealthRescueMiniGame extends MiniGame {
             this.player.isDisguisedRajah = true;
             this.aouda.rescued = true;
             this.phase = 2;
-            this.rajahShowTimer = 5.0;
+            this.rajahShowTimer = 6.0;
             this.guardsFrozen = true;
 
             this.sound.playVictory();
             if (this.camera) this.camera.addTrauma(0.6);
             particles.emitSparkles(this.aouda.x, this.aouda.y, 40);
-            this.fx.toast('👑 【假扮土邦王显灵！】路路通头戴王冠身披王袍巍然站起！全场僧侣吓得五体投地！护送艾娥达夫人全速冲向西门战象！', 5000);
+            this.fx.toast('路路通披袍起身，守卫一时怔住。艾娥达指向西门：“从那里走。”', 3500);
           } else {
-            this.lockTargetStart = Math.random() * (Math.PI * 1.2);
-            this.lockTargetEnd = this.lockTargetStart + 0.55;
+            this.lockDialAngle = 0;
+            this.lockTargetStart = this.aouda.locksRemaining === 2 ? Math.PI * 0.95 : Math.PI * 1.5;
+            this.lockTargetEnd = this.lockTargetStart + this.lockWindow;
           }
         } else {
           this.sound.playCrash();
@@ -467,11 +482,13 @@ export class StealthRescueMiniGame extends MiniGame {
     if (!this.guardsFrozen) {
       const distToDog = Math.hypot(this.player.x - this.dog.x, this.player.y - this.dog.y);
       if (distToDog < this.dog.hearRadius && !this.player.isHiding) {
+        if (!this.dog.isAlert) {
+          this.sound.playStealthAlert(1);
+          this.fx.addFloatText(this.dog.x, this.dog.y - 25, '猎犬听见了脚步', '#d4a26d');
+        }
         this.dog.isAlert = true;
-        this.sound.playStealthAlert(1);
-        this.fx.addFloatText(this.dog.x, this.dog.y - 25, '🐕 猎犬狂吠！', '#ff4d4d');
         this.guards.forEach(g => {
-          if (!g.knockedOut) {
+          if (!g.knockedOut && g.distractedTimer <= 0) {
             g.alertLevel = 1;
             g.facingAngle = Math.atan2(this.player.y - g.y, this.player.x - g.x);
           }
@@ -509,6 +526,7 @@ export class StealthRescueMiniGame extends MiniGame {
         // 如果处于隐匿状态，守卫视线大幅缩短
         const effectiveVisionRange = this.player.isHiding ? guard.visionRange * 0.25 : guard.visionRange;
 
+        let seen = false;
         if (dist <= effectiveVisionRange) {
           const angle = Math.atan2(this.player.y - guard.y, this.player.x - guard.x);
           let diff = Math.abs(guard.facingAngle - angle);
@@ -518,11 +536,14 @@ export class StealthRescueMiniGame extends MiniGame {
           if (diff <= guard.visionAngle / 2) {
             const isBlocked = this.checkLineOfSightBlocked(guard.x, guard.y, this.player.x, this.player.y);
             if (!isBlocked) {
-              guard.alertLevel = 2;
-              this.triggerAlert();
+              seen = true;
             }
           }
         }
+        guard.exposure = Math.max(0, Math.min(1, (guard.exposure || 0) + (seen ? dt / 0.9 : -dt * 1.8)));
+        if (seen) guard.alertLevel = guard.exposure > 0.65 ? 2 : 1;
+        else if (guard.distractedTimer <= 0) guard.alertLevel = 0;
+        if (guard.exposure >= 1) { this.triggerAlert(); return; }
       }
     }
 
@@ -557,6 +578,8 @@ export class StealthRescueMiniGame extends MiniGame {
         return true;
       }
     }
+    // 熄灭的火把会留下实际可用的暗区，与画面标记一致。
+    if (this.torches.some(t => !t.lit && Math.hypot(px - t.x, py - t.y) <= 100)) return true;
     // 2. 在石柱正后方暗影处
     for (const p of this.pillars) {
       const dist = Math.hypot(px - (p.x + p.w / 2), py - (p.y + p.h / 2));
@@ -566,10 +589,19 @@ export class StealthRescueMiniGame extends MiniGame {
   }
 
   checkLineOfSightBlocked(gx, gy, px, py) {
+    // 线段与石柱包围盒相交；旧实现只查终点，站在柱后仍会被看穿。
     for (const p of this.pillars) {
-      if (px >= p.x && px <= p.x + p.w && py >= p.y && py <= p.y + p.h) {
-        return true;
+      let near = 0, far = 1;
+      for (const [start, delta, min, max] of [[gx, px - gx, p.x, p.x + p.w], [gy, py - gy, p.y, p.y + p.h]]) {
+        if (Math.abs(delta) < 0.0001) {
+          if (start < min || start > max) { far = -1; break; }
+        } else {
+          const a = (min - start) / delta, b = (max - start) / delta;
+          near = Math.max(near, Math.min(a, b));
+          far = Math.min(far, Math.max(a, b));
+        }
       }
+      if (near <= far && far >= 0 && near <= 1) return true;
     }
     return false;
   }
@@ -579,23 +611,23 @@ export class StealthRescueMiniGame extends MiniGame {
     this.detected = true;
     this.sound.playStealthAlert(2);
     if (this.camera) this.camera.addTrauma(0.6);
-    this.fx.toast('⚠ 警报！神庙武僧拉响警钟！强行护送突围！', 2500);
-
-    setTimeout(() => {
-      this.finishRescue(false);
-    }, 1500);
+    this.fx.toast('守卫发现了路路通。先退回向导身边，另想办法。', 1800);
+    this.alertTimer = 1;
   }
 
   finishRescue(cleanSuccess) {
+    if (!this.running || this.completed) return;
     this.running = false;
     const foggBtn = document.getElementById('fogg-assist-btn-container');
     if (foggBtn) foggBtn.classList.add('hidden');
 
-    this.sound.playVictory();
+    if (cleanSuccess) this.sound.playVictory();
+    else this.sound.playCrash();
 
     this.complete({
-      result: cleanSuccess ? 'perfect' : 'good',
-      score: cleanSuccess ? 120 : 70,
+      result: cleanSuccess ? 'perfect' : 'miss',
+      rescued: cleanSuccess,
+      score: cleanSuccess ? 120 + Math.ceil(Math.max(0, this.timer)) : (3 - this.aouda.locksRemaining) * 20,
       baseDays: 1.5,
       daysDelta: cleanSuccess ? -1.0 : 0,
       moneyDelta: 0,
@@ -607,12 +639,12 @@ export class StealthRescueMiniGame extends MiniGame {
         color: 'calcutta'
       },
       flags: {
-        aoudaRescued: true,
+        aoudaRescued: cleanSuccess,
         rajahDisguiseMaster: cleanSuccess
       },
       comment: cleanSuccess
         ? '福克：「路路通假扮土邦王显灵之计神乎其技！艾娥达夫人，战象已备好，我们即刻启程！」'
-        : '福克：「虽有波折，但所幸艾娥达夫人安然无恙，八十天之约未受大碍。」'
+        : '这次潜入未能带出艾娥达。可以重新尝试，或让福克与向导改道接应。'
     });
   }
 
@@ -713,6 +745,13 @@ export class StealthRescueMiniGame extends MiniGame {
         ctx.textAlign = 'center';
         ctx.fillText('🔥 火把 [B泼水]', t.x, t.y + 28);
       } else {
+        ctx.fillStyle = 'rgba(75, 104, 91, 0.13)';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, 100, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(151, 182, 151, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
         ctx.fillStyle = '#222222';
         ctx.beginPath();
         ctx.arc(t.x, t.y, 10, 0, Math.PI * 2);
@@ -780,7 +819,7 @@ export class StealthRescueMiniGame extends MiniGame {
     ctx.fill();
     ctx.stroke();
 
-    if (this.aoudaImg.complete && this.aoudaImg.naturalWidth > 0) {
+    if (!this.player.hasRescued && this.aoudaImg.complete && this.aoudaImg.naturalWidth > 0) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(this.aouda.x, this.aouda.y, 35, 0, Math.PI * 2);
@@ -790,7 +829,7 @@ export class StealthRescueMiniGame extends MiniGame {
     }
 
     if (!this.player.hasRescued) {
-      ctx.fillStyle = '#ffde59';
+      ctx.fillStyle = '#ead8ad';
       ctx.font = 'bold 14px "Baskerville", serif';
       ctx.textAlign = 'center';
       ctx.fillText('艾娥达夫人 [剩余 ' + this.aouda.locksRemaining + ' 道锁]', this.aouda.x, this.aouda.y + 50);
@@ -864,7 +903,8 @@ export class StealthRescueMiniGame extends MiniGame {
 
       ctx.fillStyle = '#ffde59';
       ctx.font = 'bold 16px "Baskerville", serif';
-      ctx.fillText('指针经过【绿色区域】时按下 [A / 空格 / 点击]', w / 2, 470);
+      ctx.fillStyle = '#3f3020';
+      ctx.fillText('指针经过亮区时，轻点 [A / 空格 / 点击]', w / 2, 470);
     }
 
     // 4. 顶部 HUD
@@ -872,17 +912,28 @@ export class StealthRescueMiniGame extends MiniGame {
     ctx.fillStyle = 'rgba(15, 10, 6, 0.88)';
     ctx.strokeStyle = '#d4af37';
     ctx.lineWidth = 2;
-    ctx.fillRect(120, 12, w - 240, 40);
-    ctx.strokeRect(120, 12, w - 240, 40);
+    ctx.fillRect(28, 82, w - 56, 82);
+    ctx.strokeRect(28, 82, w - 56, 82);
 
-    ctx.font = 'bold 14px "Baskerville", serif';
+    ctx.font = '600 22px "Baskerville", serif';
     ctx.fillStyle = '#ffe87c';
     ctx.textAlign = 'left';
-    ctx.fillText('🛕 萨蒂火祭神庙 · 暗夜潜行与营救艾娥达', 145, 37);
+    ctx.fillText(this.isLockpicking ? '② 松开锁链 · 指针进入亮区时轻点'
+      : this.player.hasRescued ? '③ 一起离开 · 回到左侧西门'
+        : '① 接近艾娥达 · 草丛、暗区与石柱都能掩护', 48, 112);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#cdbb99';
+    const plan = this.config.rescuePlan === 'observe' ? '已用半天查明暗路' :
+      this.config.rescuePlan === 'divert' ? '已安排北门接应' : '自由练习';
+    ctx.fillText(plan + ' · C / 支援键：福克牵制 ' + (this.foggCooldown > 0 ? Math.ceil(this.foggCooldown) + ' 秒后可用' : '就绪'), 48, 143);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = this.player.isHiding ? '#50e3c2' : '#ffffff';
-    ctx.fillText('状态: ' + (this.player.isHiding ? '🌿 完全匿踪 (In Shadow)' : '👁️ 暴露在月光下') + ' | 💧 水袋: ' + this.player.waterPouches, w - 145, 37);
+    ctx.fillText(Math.ceil(Math.max(0, this.timer)) + ' 秒 · 水袋 ' + this.player.waterPouches, w - 48, 112);
+    const exposure = Math.max(...this.guards.map(g => g.exposure || 0));
+    ctx.fillStyle = '#493b2c'; ctx.fillRect(w - 268, 130, 220, 10);
+    ctx.fillStyle = exposure > 0.65 ? '#bc7056' : '#bea06c';
+    ctx.fillRect(w - 268, 130, 220 * exposure, 10);
     ctx.restore();
   }
 }

@@ -23,11 +23,14 @@ export class InputManager {
         justC: false
       },
       keys: {},
+      justKeys: {},
       gesture: { swipe: null }
     };
 
     this.touchStartPos = { x: 0, y: 0, time: 0 };
+    this.canvasPointerId = null;
     this.activeKeyMap = new Set();
+    this.enabled = false;
     this.initListeners();
     this.setupVirtualControls();
   }
@@ -46,6 +49,8 @@ export class InputManager {
   initListeners() {
     // 1. 鼠标/触控指针监听
     const handlePointerDown = (e) => {
+      if (!this.enabled || this.canvasPointerId !== null) return;
+      this.canvasPointerId = e.pointerId;
       const coords = this.getLogicalCoords(e.clientX, e.clientY);
       this.input.pointer.x = coords.x;
       this.input.pointer.y = coords.y;
@@ -56,13 +61,17 @@ export class InputManager {
     };
 
     const handlePointerMove = (e) => {
+      if (this.canvasPointerId !== null && e.pointerId !== this.canvasPointerId) return;
       const coords = this.getLogicalCoords(e.clientX, e.clientY);
       this.input.pointer.x = coords.x;
       this.input.pointer.y = coords.y;
     };
 
-    const handlePointerUp = (e) => {
+    const handlePointerUp = (e, cancelled = false) => {
+      if (!this.enabled || e.pointerId !== this.canvasPointerId) return;
+      this.canvasPointerId = null;
       this.input.pointer.down = false;
+      if (cancelled) return;
       this.input.pointer.justUp = true;
 
       // 手势识别
@@ -83,9 +92,11 @@ export class InputManager {
     this.canvas.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', e => handlePointerUp(e, true));
 
     // 2. 键盘监听
     window.addEventListener('keydown', (e) => {
+      if (!this.enabled || e.repeat || e.target?.closest?.('button, input, textarea, select')) return;
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
         e.preventDefault();
       }
@@ -94,6 +105,8 @@ export class InputManager {
 
       if (!this.activeKeyMap.has(e.code)) {
         this.activeKeyMap.add(e.code);
+        // 短按可能在下一帧前已经松开，仍须保留这一次输入。
+        this.input.justKeys[e.code] = true;
         this.processKey(e.code, true);
       }
     });
@@ -160,14 +173,10 @@ export class InputManager {
     const touchControls = document.getElementById('touch-controls');
     if (!touchControls) return;
 
-    // 默认触屏设备展示，PC 隐藏
-    if (this.isTouchDevice) {
-      touchControls.classList.remove('hidden');
-    }
-
     const bindButton = (el, pressAction, releaseAction) => {
       if (!el) return;
       const onDown = (e) => {
+        if (!this.enabled) return;
         if (e && e.preventDefault) e.preventDefault();
         if (e && e.stopPropagation) e.stopPropagation();
         el.classList.add('active');
@@ -266,32 +275,32 @@ export class InputManager {
         this.configureUI({ showDpad: false, showA: true, showB: true, showC: false, labelA: '跳跃', labelB: '滑铲' });
         break;
       case 'steamOverdrive':
-        this.configureUI({ showDpad: true, showA: true, showB: true, showC: false, labelA: '超频', labelB: '调压' });
+        this.configureUI({ showDpad: false, showA: true, showB: true, showC: false, labelA: '红轨', labelB: '蓝轨' });
         break;
       case 'elephantRide':
-        this.configureUI({ showDpad: true, showA: true, showB: true, showC: false, labelA: '象鼻轰击', labelB: '战象咆哮' });
+        this.configureUI({ showDpad: true, showA: true, showB: true, showC: false, labelA: '跳跃', labelB: '喷水' });
         break;
       case 'stealthRescue':
-        this.configureUI({ showDpad: true, showA: true, showB: true, showC: false, labelA: '伏地潜行', labelB: '击晕守卫' });
+        this.configureUI({ showDpad: true, showA: true, showB: true, showC: true, labelA: '解锁', labelB: '灭火', labelC: '福克支援' });
         break;
       case 'typhoonSailing':
-        this.configureUI({ showDpad: true, showA: true, showB: true, showC: false, labelA: '扬帆破浪', labelB: '排空压舱' });
+        this.configureUI({ showDpad: false, showA: true, showB: true, showC: false, labelA: '收 / 展帆', labelB: '信号' });
         break;
       case 'circusAcrobat':
         this.configureUI({ showDpad: true, showA: true, showB: false, showC: false, labelA: '起跳' });
         break;
       case 'sanFranciscoBrawl':
-        this.configureUI({ showDpad: true, showA: true, showB: true, showC: true, labelA: '重拳', labelB: '飞踢', labelC: '防御' });
+        this.configureUI({ showDpad: true, showA: true, showB: true, showC: true, labelA: '出拳', labelB: '踢击', labelC: '组合技' });
         break;
       case 'trainDefense':
         // 列车射击：支持触屏直接点射，同时提供开火、换弹、专注模式键
         this.configureUI({ showDpad: false, showA: true, showB: true, showC: true, labelA: '射击', labelB: '换弹', labelC: '专注' });
         break;
       case 'iceSledge':
-        this.configureUI({ showDpad: true, showA: true, showB: false, showC: false, labelA: '顺风加速' });
+        this.configureUI({ showDpad: true, showA: true, showB: true, showC: false, labelA: '顺风加速', labelB: '漂移' });
         break;
       case 'atlanticBurning':
-        this.configureUI({ showDpad: false, showA: true, showB: true, showC: true, labelA: '投煤', labelB: '拆板', labelC: '泄压' });
+        this.configureUI({ showDpad: false, showA: false, showB: false, showC: false });
         break;
       case 'londonFinale':
         this.configureUI({ showDpad: true, showA: true, showB: false, showC: false, labelA: '扬鞭绝杀' });
@@ -302,7 +311,25 @@ export class InputManager {
   }
 
   // 每一帧结束时清理单次触发状态
+  setEnabled(enabled) {
+    this.enabled = enabled;
+    this.reset();
+  }
+
+  reset() {
+    this.canvasPointerId = null;
+    this.input.keys = {};
+    this.input.justKeys = {};
+    Object.keys(this.input.buttons).forEach(key => { this.input.buttons[key] = false; });
+    this.activeKeyMap.clear();
+    this.input.axis.x = this.input.axis.y = 0;
+    this.input.pointer.down = this.input.pointer.justDown = this.input.pointer.justUp = false;
+    this.input.gesture.swipe = null;
+    document.querySelectorAll('#touch-controls .active').forEach(el => el.classList.remove('active'));
+  }
+
   endFrame() {
+    this.input.justKeys = {};
     this.input.pointer.justDown = false;
     this.input.pointer.justUp = false;
     this.input.buttons.justA = false;

@@ -14,47 +14,11 @@ export async function runLeg2({ gameRunner, hud }) {
   // 1. 渲染苏伊士运河/红海高精背景
   if (sceneBackdrop) sceneBackdrop.setBackdrop('suez');
 
-  // 剧情段落一：苏伊士领事馆签证智斗与菲克斯密谋
   await dialogue.playSequence([
-    {
-      speaker: '侦探菲克斯',
-      avatar: 'fix',
-      text: '（向领事急切密报）领事先生！这个人就是伦敦英格兰银行五万五千英镑大劫案的凶犯！请您务必拒绝给他的护照签证，就地扣押！'
-    },
-    {
-      speaker: '英国驻苏伊士领事',
-      avatar: 'reform_club',
-      text: '菲克斯先生，大英帝国的法律是神圣的。这位斐利亚·福克先生持有完全合法的通行护照，我无权无故扣留一位遵纪守法的绅士。（啪！盖下苏伊士过境印章）祝您旅途愉快，福克先生！'
-    },
-    {
-      speaker: '斐利亚·福克',
-      avatar: 'fogg',
-      text: '多谢领事先生。时间分秒必争，路路通，我们立刻登上「蒙古号」，穿过红海驶向印度孟买！'
-    }
-  ]);
-
-  // 剧情段落二：红海遭遇狂暴季风风暴，福克重金超频
-  await dialogue.playSequence([
-    {
-      speaker: '蒙古号船长',
-      avatar: 'reform_club',
-      text: '报告福克先生！前方进入红海峡湾，遭遇印度洋凶猛西南季风！逆风逆浪，船体颠簸严重，预计至少要延误 2 到 3 天才能抵达孟买！'
-    },
-    {
-      speaker: '斐利亚·福克',
-      avatar: 'fogg',
-      text: '八十天之约容不得半天延误！轮机长，立即开启蒸汽轮机超频运转！听好节奏，底层机舱的蒸汽冲程就是你的节拍器！'
-    },
-    {
-      speaker: '蒙古号轮机长',
-      avatar: 'reform_club',
-      text: '只要跟随 120 BPM 蒸汽轰鸣节拍，踩准每一次红键投煤与蓝键活塞冲程，航速就能飙升至 28 节破浪狂飙！'
-    },
-    {
-      speaker: '让·路路通',
-      avatar: 'passepartout',
-      text: '遵命，福克先生！踩着蒸汽节拍打出 PERFECT 连击，看我让这头钢铁巨兽全速超频！'
-    }
+    { speaker: '侦探菲克斯', avatar: 'fix', text: '证件齐全，逮捕令却还没到。我只能看着他登船……然后跟上去。' },
+    { speaker: '蒙古号轮机长', avatar: 'reform_club', text: '红海起风了。想少耽搁，就得让投煤与活塞咬住同一个节拍。先跟我练三拍。' },
+    { speaker: '斐利亚·福克', avatar: 'fogg', text: '给轮机组记五百英镑奖金。路路通，你听轮机长的；时间与开销，我来负责。' },
+    { speaker: '让·路路通', avatar: 'passepartout', text: '明白。先听，再动手。' }
   ]);
 
   let keepRetrying = true;
@@ -80,12 +44,12 @@ export async function runLeg2({ gameRunner, hud }) {
         options: [
           {
             id: 'bonus_repair',
-            label: '【紧急抢修】追加 £300 奖金让工程师带压焊接补漏！',
+            label: '追加 £300，安排轮机组分段抢修',
             subText: '支出 -£300 (维持准点)',
             costColor: '#8b1e1e',
             moneyDelta: -300,
             daysDelta: 0,
-            comment: '福克：「重赏之下必有勇夫，务必在航行中完成抢修！」'
+            comment: '福克把抢修费用记下。轮机组轮流检修，船仍按原定时刻抵达。'
           },
           {
             id: 'accept_delay',
@@ -100,7 +64,7 @@ export async function runLeg2({ gameRunner, hud }) {
       });
 
       moneyDelta += choice.moneyDelta || 0;
-      daysDelta += choice.daysDelta || 0;
+      daysDelta = choice.daysDelta || 0;
       comment = choice.comment;
     } else if (gameResult.rank === 'S') {
       moneyDelta += 300; // 船长赞赏福克高超领航术，减免部分燃油附加费
@@ -115,11 +79,12 @@ export async function runLeg2({ gameRunner, hud }) {
       baseDays,
       daysDelta,
       moneyDelta,
+      score: gameResult.score,
       stamp: {
         id: 'bombay',
-        city: '印度孟买总督府',
+        city: '印度 · 孟买',
         date: '第 20 天',
-        label: '印度殖民地准入特别许可',
+        label: '蒙古号靠港 · 接续铁路',
         color: 'bombay'
       },
       flags,
@@ -140,7 +105,7 @@ export async function runLeg2({ gameRunner, hud }) {
     {
       speaker: '斐利亚·福克',
       avatar: 'fogg',
-      text: '孟买已到。我们比原定计划节省了宝贵的时间。路路通，立刻转乘大印度半岛铁路火车，横穿印度大陆前往加尔各答！'
+      text: '孟买已到。省下或耽误的时间，都已记在账本上。路路通，带好护照，我们转乘火车去加尔各答。'
     },
     {
       speaker: '侦探菲克斯',

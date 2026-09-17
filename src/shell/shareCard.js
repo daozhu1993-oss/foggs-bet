@@ -64,7 +64,7 @@ export class SharePosterGenerator {
   show() {
     this.generatePoster();
     if (this.modal) this.modal.classList.remove('hidden');
-    sound.playVictory();
+    if (gameState.getFlag('betWon')) sound.playVictory();
   }
 
   hide() {
@@ -101,7 +101,7 @@ export class SharePosterGenerator {
     // 3. 主标题
     ctx.fillStyle = '#1c140e';
     ctx.font = 'bold 36px "Baskerville", serif';
-    ctx.fillText('环球八十天 · 探险家行纪档案', w / 2, 102);
+    ctx.fillText(state.flags.betWon ? '如约归来 · 八十天之约' : '世界走过的痕迹 · 环球行纪', w / 2, 102);
 
     ctx.strokeStyle = '#8c6d23';
     ctx.lineWidth = 1.5;
@@ -122,7 +122,7 @@ export class SharePosterGenerator {
     const gap = 16;
     const startX = (w - (boxW * 3 + gap * 2)) / 2;
 
-    this.drawStatCard(ctx, startX, boxY, boxW, boxH, '剩余倒计时', `${TimeManager.formatDays(remainingDays)}`, '#8b1e1e');
+    this.drawStatCard(ctx, startX, boxY, boxW, boxH, '实际旅程用时', `${TimeManager.formatDays(state.time.elapsed)}`, '#8b1e1e');
     this.drawStatCard(ctx, startX + boxW + gap, boxY, boxW, boxH, '探险银行本票', `${MoneyManager.formatGBP(state.money.gbp)}`, '#1a4329');
     this.drawStatCard(ctx, startX + (boxW + gap) * 2, boxY, boxW, boxH, '随行旅伴', state.flags.aoudaRescued ? '艾娥达夫人已随行' : '独自前行', '#5a3d28');
 
@@ -140,11 +140,13 @@ export class SharePosterGenerator {
     ctx.fillStyle = '#2b1f17';
     ctx.font = 'bold 18px "Baskerville", serif';
     ctx.textAlign = 'left';
-    ctx.fillText('◆ 已征服航段皇家签证火漆钢印 (Imperial Official Visas)', 50, 575);
+    ctx.fillText('◆ 护照里的来路 (Stamps from the Journey)', 50, 575);
 
-    this.drawRoyalStampSeal(ctx, 160, 675, 'LONDON', '02 OCT 1872', 'REFORM CLUB', '#8b1e1e', -0.08);
-    this.drawRoyalStampSeal(ctx, 400, 675, 'SUEZ', '09 OCT 1872', 'CONSULATE', '#1a4329', 0.06);
-    this.drawRoyalStampSeal(ctx, 640, 675, 'CALCUTTA', '25 OCT 1872', 'EAST INDIA', '#7a3a0e', -0.05);
+    const stamps = state.passport.length > 3
+      ? [state.passport[0], state.passport[Math.floor(state.passport.length / 2)], state.passport.at(-1)]
+      : state.passport;
+    stamps.forEach((stamp, i) => this.drawRoyalStampSeal(ctx, 160 + 240 * i, 675,
+      stamp.city.slice(0, 12), stamp.date, '旅途留印', ['#8b1e1e', '#1a4329', '#7a3a0e'][i], [-0.08, 0.06, -0.05][i]));
 
     // 8. 探险大事记
     ctx.fillStyle = '#2b1f17';
@@ -153,15 +155,10 @@ export class SharePosterGenerator {
 
     ctx.font = '15px "Baskerville", serif';
     ctx.fillStyle = '#3a2b1f';
-    const logs = [
-      '• 伦敦改良俱乐部：两万英镑立赌，八十天环游地球正式启程。',
-      '• 苏伊士码头：突破菲克斯侦探盘查与跳板拥堵，分秒不差准时赶船。',
-      state.flags.boughtElephant ? '• 印度断轨丛林：豪掷 £2,000 购得大象奇阿尼，劈荆斩棘跨越火障。' : '• 印度丛林：乘象狂奔突破热带雨林。',
-      state.flags.aoudaRescued ? '• 火祭营地夜潜：福克声东击西，路路通奇袭斩断铁锁解救艾娥达夫人！' : '• 顺利通过印度次大陆。'
-    ];
+    const logs = state.history.slice(-4).map(entry => `• ${entry.text}`);
 
     logs.forEach((logText, idx) => {
-      ctx.fillText(logText, 60, 830 + idx * 34);
+      ctx.fillText(logText, 60, 830 + idx * 34, w - 120);
     });
 
     // 9. 凡尔纳文学金句
@@ -175,8 +172,8 @@ export class SharePosterGenerator {
     ctx.font = 'italic 17px "Baskerville", serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#5c4028';
-    ctx.fillText('“凡人所能想象之事，必有人能将其实现。” —— 儒勒·凡尔纳', w / 2, 1020);
-    ctx.fillText('“精确是绅士的第一美德，而时间是永不回头的舵手。”', w / 2, 1055);
+    ctx.fillText('八十天是赌约的刻度，不是世界的尽头。', w / 2, 1020);
+    ctx.fillText(state.flags.betWon ? '他如约回到了牌桌，却已不是离开时的那个人。' : '有些旅程没有赢下赌金，却带回了值得珍惜的人。', w / 2, 1055);
 
     // 10. 底部标签
     ctx.font = '13px sans-serif';
@@ -274,18 +271,18 @@ export class SharePosterGenerator {
     const elapsedDays = state.time.elapsed !== undefined ? state.time.elapsed : (state.time.spentDays !== undefined ? state.time.spentDays : 0);
     const remDays = gameState.getRemainingDays();
     const moneyStr = MoneyManager.formatGBP(state.money.gbp);
-    const aoudaStr = (state.flags && state.flags.aoudaRescued) ? '成功营救并共谐连理 ❤️' : '未解救';
+    const aoudaStr = state.flags.aoudaMarried ? '从旅伴到家人' : state.flags.aoudaRescued ? '已加入旅程' : '尚未同行';
 
-    const text = `【🎩 Fogg 的赌约 · 八十天环游地球】\n${isCompleted ? '🎉 我已带领斐利亚·福克先生在 80 天内征服环球三大洋六大洲！' : '🌍 我正在带领福克先生与路路通进行八十天环球大探险！'}\n⏱️ 探险用时：${TimeManager.formatDays(elapsedDays)} / 80.0 天 (剩余: ${TimeManager.formatDays(remDays)})\n💰 最终资信：${moneyStr}\n🧕 艾娥达夫人：${aoudaStr}\n👑 探险终评：★ 1872 维多利亚世界传奇探险宗师 ★\n“凡人所能想象之事，必有人能将其实现！”`;
+    const text = `【Fogg 的赌约 · 八十天环游地球】\n${state.flags.betWon ? '我在八十天内回到了伦敦，赢下了赌约。' : isCompleted ? '我完成了环球旅程，虽然没能赶上赌约的期限。' : '我的环球旅程还在继续。'}\n全程：${TimeManager.formatDays(elapsedDays)} / 80.0 天\n余款：${moneyStr}\n艾娥达：${aoudaStr}\n护照留下了 ${state.passport.length} 枚印章。`;
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         fx.toast('已复制环球探险总战绩至剪贴板，快去发圈分享吧！', 3000);
       }).catch(() => {
-        fx.toast('战绩文案已就绪！', 2000);
+        window.prompt('浏览器未允许复制，请手动复制这段行纪：', text);
       });
     } else {
-      fx.toast('战绩文案已就绪！', 2000);
+      window.prompt('请手动复制这段行纪：', text);
     }
   }
 }

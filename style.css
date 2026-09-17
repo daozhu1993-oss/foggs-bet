@@ -48,11 +48,14 @@ html, body {
   background: radial-gradient(circle at center, #241d17 0%, #0d0b09 100%);
   position: relative;
   overflow: hidden;
+  /* A scaled 1280x720 child must never turn this viewport into a focus-scroll container. */
+  overflow: clip;
 }
 
 .game-container {
   width: 1280px;
   height: 720px;
+  flex-shrink: 0;
   position: relative;
   background: #1a1612;
   box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), 0 0 0 3px var(--brass-dark);
@@ -71,6 +74,7 @@ html, body {
 
 #game-canvas {
   z-index: 1;
+  touch-action: none;
 }
 
 #fx-canvas {
@@ -317,6 +321,7 @@ html, body {
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   cursor: pointer;
   transition: transform 0.08s, background 0.08s;
+  touch-action: none;
 }
 
 .dpad-btn:active, .dpad-btn.active {
@@ -361,6 +366,7 @@ html, body {
   box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 0 10px rgba(212, 175, 55, 0.3);
   cursor: pointer;
   transition: transform 0.08s, box-shadow 0.08s;
+  touch-action: none;
 }
 
 .action-btn:active, .action-btn.active {
@@ -694,12 +700,16 @@ html, body {
   transition: all 0.15s ease;
 }
 
-.decision-opt-btn:hover {
+.decision-opt-btn:hover:not(:disabled) {
   background: #fdf5e2;
   border-color: var(--brass-gold);
   transform: translateX(4px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
+
+.decision-opt-btn { align-items: flex-start; flex-direction: column; gap: 8px; text-align: left; }
+.decision-opt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.decision-opt-btn:focus-visible { outline: 3px solid #73532d; outline-offset: 4px; }
 
 /* 地图弹窗 */
 .vintage-map-box {
@@ -1394,6 +1404,52 @@ html, body {
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 }
 
+/* v85: readable instructions, explicit start, and a real pause surface. */
+.journey-status { margin-top: 5px; color: #ecd9ac; font-size: 12px; text-align: center; }
+.pause-card { width: min(540px, 92%); padding: 32px; background: #f3e7cf; color: #382416; border: 2px solid #ad8648; border-radius: 8px; box-shadow: 0 24px 90px #0009; }
+.pause-card h2 { margin: 12px 0; font-size: 30px; }
+.pause-card h3 { font-size: 17px; font-weight: normal; }
+.pause-card p { line-height: 1.8; }
+.pause-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+#pause-modal { z-index: 250; }
+.briefing-card { max-height: 660px; overflow-y: auto; padding: 26px 30px; }
+.briefing-goal { padding: 12px 16px; margin: 16px 0; line-height: 1.65; text-align: left; border-left: 3px solid #896227; background: #dfcba433; color: #382416; }
+.briefing-tip { font-size: 14px; line-height: 1.6; color: #63503b; margin: 16px 0; }
+.briefing-status { color: #63503b; font-size: 13px; min-height: 20px; margin: 12px 0 0; }
+.briefing-back { display: block; margin: 12px auto 0; padding: 6px 12px; border: 0; background: transparent; color: #63503b; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.result-score-detail { color: #72521d; font-size: 16px; }
+.result-journey-impact { padding: 10px; color: #284830; background: #385e3610; font-size: 14px; line-height: 1.6; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible { outline: 3px solid #c89631; outline-offset: 4px; }
+@media (max-height: 500px) {
+  .touch-dpad { width: 264px; height: 264px; bottom: 12px; left: 24px; }
+  .dpad-btn { width: 88px; height: 88px; font-size: 28px; }
+  .dpad-center { width: 52px; height: 52px; }
+  .touch-actions { right: 24px; bottom: 22px; gap: 16px; }
+  .action-btn { width: 88px; height: 88px; }
+  .action-btn .btn-label { font-size: 28px; }
+  .action-btn .btn-sub { font-size: 14px; }
+  .briefing-card { width: 1100px; padding: 18px 30px; max-height: 660px; }
+  .briefing-tag { font-size: 20px; }
+  .briefing-title { font-size: 32px; margin: 8px 0; }
+  .briefing-sub { font-size: 24px; }
+  .briefing-goal { font-size: 24px; margin: 10px 0; padding: 8px 12px; }
+  .briefing-card .control-key, .briefing-card .control-desc { font-size: 23px; }
+  .briefing-tip { font-size: 22px; margin: 10px 0; }
+  .briefing-status, .briefing-back { font-size: 20px; }
+  #briefing-start { font-size: 26px; min-height: 82px; }
+  .pause-card { width: 860px; padding: 24px 36px; font-size: 24px; }
+  .pause-card h3 { font-size: 24px; }
+  .pause-actions button { font-size: 26px; }
+  .journey-status { font-size: 10px; margin-top: 1px; }
+}
+@media (max-height: 350px) {
+  .touch-dpad { width: 300px; height: 300px; }
+  .dpad-btn, .action-btn { width: 100px; height: 100px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .briefing-card, .title-main, .stamp-slam-anim { animation: none !important; }
+}
 .hidden {
   display: none !important;
 }

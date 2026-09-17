@@ -39,7 +39,8 @@ class FXManager {
   shake(duration = 300, intensity = 8) {
     this.shakeTimer = duration / 1000;
     this.shakeIntensity = intensity;
-    const container = document.getElementById('game-container');
+    // Shake the stage, never the parent that owns responsive scaling.
+    const container = document.getElementById('game-canvas');
     if (container) {
       container.classList.remove('shake-screen');
       void container.offsetWidth; // Trigger reflow

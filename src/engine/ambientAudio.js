@@ -113,7 +113,7 @@ export class AmbientSoundscape {
     let chimeStep = 0;
     const chimePitches = [164.81, 207.65, 246.94, 164.81]; // E-G#-B-E
     this.intervalId = setInterval(() => {
-      if (!this.sound.enabled || this.currentZone !== 'london') return;
+      if (!this.sound.enabled || this.sound.paused || this.currentZone !== 'london') return;
       const t = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const bellGain = this.ctx.createGain();
@@ -165,7 +165,7 @@ export class AmbientSoundscape {
 
     // B. 蒸汽机活塞深沉低频呼哧律动 (Low Engine Piston Chug)
     this.intervalId = setInterval(() => {
-      if (!this.sound.enabled || (this.currentZone !== 'sea' && this.currentZone !== 'suez' && this.currentZone !== 'hongkong')) return;
+      if (!this.sound.enabled || this.sound.paused || (this.currentZone !== 'sea' && this.currentZone !== 'suez' && this.currentZone !== 'hongkong')) return;
       const t = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
@@ -206,7 +206,7 @@ export class AmbientSoundscape {
     // B. 神庙火祭铜铃与林中清脆鸟语 (Chime & Bell)
     const bells = [1760.00, 2093.00, 2637.02, 3135.96]; // A6-C7-E7-G7
     this.intervalId = setInterval(() => {
-      if (!this.sound.enabled || (this.currentZone !== 'jungle' && this.currentZone !== 'india')) return;
+      if (!this.sound.enabled || this.sound.paused || (this.currentZone !== 'jungle' && this.currentZone !== 'india')) return;
       const t = this.ctx.currentTime;
       const pitch = bells[Math.floor(Math.random() * bells.length)];
 
@@ -248,7 +248,7 @@ export class AmbientSoundscape {
     // B. 列车铁轨律动撞击声 (Click-Clack)
     let railBeat = 0;
     this.intervalId = setInterval(() => {
-      if (!this.sound.enabled || (this.currentZone !== 'west' && this.currentZone !== 'rocky' && this.currentZone !== 'nebraska')) return;
+      if (!this.sound.enabled || this.sound.paused || (this.currentZone !== 'west' && this.currentZone !== 'rocky' && this.currentZone !== 'nebraska')) return;
       const t = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();
@@ -287,7 +287,7 @@ export class AmbientSoundscape {
 
     // B. 锅炉内木材柴火爆烈噼啪 (Fire Crackles)
     this.intervalId = setInterval(() => {
-      if (!this.sound.enabled || (this.currentZone !== 'fire' && this.currentZone !== 'atlantic')) return;
+      if (!this.sound.enabled || this.sound.paused || (this.currentZone !== 'fire' && this.currentZone !== 'atlantic')) return;
       const t = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       const g = this.ctx.createGain();

@@ -19,7 +19,7 @@ export class SteamOverdriveMiniGame extends MiniGame {
 
     this.animTime = 0;                 // 由 WebAudio 单调时钟驱动的曲目时间 (秒)
     this.songStartedAt = 0;
-    this.pauseStartedAt = 0;
+    this.pauseStartedAt = null;
     this.notes = [];
     this.totalNotesCount = 0;
 
@@ -69,8 +69,12 @@ export class SteamOverdriveMiniGame extends MiniGame {
     this.lastMusicStep = -1;
     this.shipAnim = { speedKnots: 14.0 };
 
-    // 生成专业 45 秒蒸汽节奏谱面
-    this.generateRhythmChart();
+    // 红、蓝、双音各练成一次；练习不影响正式成绩与航程。
+    this.practising = true;
+    this.practiceIndex = 0;
+    this.practiceReadyAt = Infinity;
+    this.notes = [{ time: 2, type: 'left', hit: false, judged: false }];
+    this.totalNotesCount = 0;
 
     this.input.configureUI({
       showDpad: true,
@@ -82,7 +86,6 @@ export class SteamOverdriveMiniGame extends MiniGame {
 
     this.sound.playSteamWhistle();
     if (this.sound.music) this.sound.music.stopTheme();
-    this.fx.toast('【经典节奏音游】跟随节拍按下 [D/←] 红键 或 [K/→] 蓝键！双音按 [空格]！', 4500);
   }
 
   getClockTime() {
@@ -94,15 +97,27 @@ export class SteamOverdriveMiniGame extends MiniGame {
     this.songStartedAt = this.getClockTime();
   }
 
+  beginSong() {
+    this.practising = false;
+    this.animTime = 0;
+    this.songStartedAt = this.getClockTime();
+    this.lastMusicStep = -1;
+    this.currentJudgment = null;
+    this.generateRhythmChart();
+    this.input.reset();
+    this.lastPressLeft = this.lastPressRight = this.lastPressSpace = false;
+    this.fx.toast('轮机交给你了。现在开始记分。', 1800);
+  }
+
   pause() {
     if (!this.paused) this.pauseStartedAt = this.getClockTime();
     super.pause();
   }
 
   resume() {
-    if (this.paused && this.pauseStartedAt) {
+    if (this.paused && this.pauseStartedAt !== null) {
       this.songStartedAt += this.getClockTime() - this.pauseStartedAt;
-      this.pauseStartedAt = 0;
+      this.pauseStartedAt = null;
     }
     super.resume();
   }
@@ -161,7 +176,7 @@ export class SteamOverdriveMiniGame extends MiniGame {
       const type = sprintStep % 8 === 0 ? 'both' : (sprintStep % 2 === 0 ? 'left' : 'right');
       this.notes.push({ time: t, type, hit: false, judged: false });
     }
-    this.notes.push({ time: 43.8, type: 'both', hit: false, judged: false }); // 终极压轴大咚！
+    this.notes.push({ time: 43.5, type: 'both', hit: false, judged: false }); // 终拍落在半秒拍点上。
 
     this.notes.sort((a, b) => a.time - b.time);
     this.totalNotesCount = this.notes.length;
@@ -171,7 +186,8 @@ export class SteamOverdriveMiniGame extends MiniGame {
     if (!this.running || this.paused) return;
 
     const inp = this.input ? this.input.input : null;
-    const keys = inp ? (inp.keys || {}) : {};
+    const justKeys = inp?.justKeys || {};
+    const keys = { ...(inp?.keys || {}), ...justKeys };
     const btns = inp ? (inp.buttons || {}) : {};
     const pointer = inp ? (inp.pointer || {}) : {};
 
@@ -179,11 +195,23 @@ export class SteamOverdriveMiniGame extends MiniGame {
     const dt = Math.max(0, songTime - this.animTime);
     this.animTime = songTime;
 
+    const skipPractice = keys.Enter || (pointer.justDown && pointer.x >= 180 && pointer.x <= 1100 &&
+      pointer.y >= 195 && pointer.y <= 238);
+    if (this.practising && (skipPractice || (this.practiceIndex === 3 && this.animTime >= this.practiceReadyAt &&
+        (btns.justA || btns.justB || (pointer.justDown && pointer.y >= 150 && pointer.y <= 238) ||
+        (keys.Space && !this.lastPressSpace) || (keys.KeyD && !this.lastPressLeft) ||
+        (keys.KeyK && !this.lastPressRight))))) {
+      this.beginSong();
+      return;
+    }
+
     // 八分音符配乐与谱面共用同一时钟，避免独立定时器造成漂拍。
     const musicStep = Math.floor(this.animTime / (this.beatInterval / 2));
     if (musicStep !== this.lastMusicStep) {
       this.lastMusicStep = musicStep;
-      if (this.sound?.music?.playSteamStep) this.sound.music.playSteamStep(musicStep, this.stats.isFever);
+      if (this.practising) {
+        if (musicStep % 2 === 0) this.sound.playBeatTick?.(musicStep % 8 === 0);
+      } else if (this.sound?.music?.playSteamStep) this.sound.music.playSteamStep(musicStep, this.stats.isFever);
       else if (this.sound?.playBeatTick) this.sound.playBeatTick(musicStep % 8 === 0);
     }
 
@@ -208,7 +236,7 @@ export class SteamOverdriveMiniGame extends MiniGame {
     }
 
     // 自然压力平缓衰减
-    if (!this.stats.isFever) {
+    if (!this.practising && !this.stats.isFever) {
       this.stats.steamPressure = Math.max(10, this.stats.steamPressure - 3.5 * dt);
     }
 
@@ -216,9 +244,12 @@ export class SteamOverdriveMiniGame extends MiniGame {
     this.shipAnim.speedKnots = this.stats.isFever ? 28.0 : (12.0 + (this.stats.steamPressure / 100) * 8.0);
 
     // 1. 监听玩家按键触发打击
-    const pressLeft = keys['KeyD'] || keys['ArrowLeft'] || keys['KeyA'] || btns.left || btns.A || btns.actionA;
-    const pressRight = keys['KeyK'] || keys['ArrowRight'] || keys['KeyL'] || (btns.right && !keys['KeyD']) || btns.B || btns.actionB;
+    const pressLeft = keys['KeyD'] || keys['ArrowLeft'] || keys['KeyA'] || btns.left || btns.A || btns.justA || btns.actionA;
+    const pressRight = keys['KeyK'] || keys['ArrowRight'] || keys['KeyL'] || (btns.right && !keys['KeyD']) || btns.B || btns.justB || btns.actionB;
     const pressSpace = keys['Space'] || keys['KeyJ'] || (pressLeft && pressRight);
+    const freshLeft = justKeys.KeyD || justKeys.ArrowLeft || justKeys.KeyA || btns.justA;
+    const freshRight = justKeys.KeyK || justKeys.ArrowRight || justKeys.KeyL || btns.justB;
+    const freshSpace = justKeys.Space || justKeys.KeyJ || (freshLeft && pressRight) || (freshRight && pressLeft);
 
     // 触摸屏幕左右按键区
     let touchLeft = false;
@@ -235,15 +266,15 @@ export class SteamOverdriveMiniGame extends MiniGame {
       }
     }
 
-    if ((pressSpace || touchSpace) && !this.lastPressSpace) {
+    if (touchSpace || (pressSpace && (!this.lastPressSpace || freshSpace))) {
       this.handleHitInput('both');
       this.keyPressAnim.space = 1.0;
     } else {
-      if ((pressLeft || touchLeft) && !this.lastPressLeft) {
+      if (touchLeft || (pressLeft && (!this.lastPressLeft || freshLeft))) {
         this.handleHitInput('left');
         this.keyPressAnim.left = 1.0;
       }
-      if ((pressRight || touchRight) && !this.lastPressRight) {
+      if (touchRight || (pressRight && (!this.lastPressRight || freshRight))) {
         this.handleHitInput('right');
         this.keyPressAnim.right = 1.0;
       }
@@ -259,6 +290,11 @@ export class SteamOverdriveMiniGame extends MiniGame {
       if (!note.judged && !note.hit) {
         const timeDiff = currentTime - note.time;
         if (timeDiff > this.greatWindow) {
+          if (this.practising) {
+            note.time = Math.ceil((this.animTime + 2) / this.beatInterval) * this.beatInterval;
+            this.registerJudgment('再试一拍 · 不扣分', '#ead8ad', 0);
+            continue;
+          }
           note.judged = true;
           this.registerJudgment('MISS', '#888888', 0);
           this.stats.miss++;
@@ -269,7 +305,7 @@ export class SteamOverdriveMiniGame extends MiniGame {
     }
 
     // 3. 歌曲结束判定
-    if (this.animTime >= this.songDuration) {
+    if (!this.practising && this.animTime >= this.songDuration) {
       this.finishRhythmGame();
     }
   }
@@ -294,6 +330,18 @@ export class SteamOverdriveMiniGame extends MiniGame {
     if (closestNote) {
       closestNote.hit = true;
       closestNote.judged = true;
+
+      if (this.practising) {
+        this.playBeatSound(inputType);
+        this.registerJudgment('对，就是这一拍', '#ead8ad', 0);
+        this.practiceIndex++;
+        this.notes = this.practiceIndex < 3
+          ? [{ time: Math.ceil((this.animTime + 2) / this.beatInterval) * this.beatInterval,
+            type: ['left', 'right', 'both'][this.practiceIndex], hit: false, judged: false }]
+          : [];
+        if (this.practiceIndex === 3) this.practiceReadyAt = this.animTime + 0.8;
+        return;
+      }
 
       const isBoth = closestNote.type === 'both';
       if (minDiff <= this.perfectWindow) {
@@ -368,6 +416,7 @@ export class SteamOverdriveMiniGame extends MiniGame {
   }
 
   finishRhythmGame() {
+    if (!this.running || this.practising) return;
     this.running = false;
     this.sound.playVictory();
 
@@ -384,9 +433,9 @@ export class SteamOverdriveMiniGame extends MiniGame {
         score: this.stats.score,
         daysDelta,
         flags: { redSeaConquered: true, rhythmMaster: rank === 'S' },
-        comment: isPerfect
-          ? `福克：「蒸汽轮机节奏打击完美无瑕！准确率 ${(accuracy * 100).toFixed(0)}%，最大连击 ${this.stats.maxCombo} Combo，提前整整两天抵达孟买港！」`
-          : `福克：「轮机运转良好，准确率 ${(accuracy * 100).toFixed(0)}%，蒙古号准点靠泊孟买码头！」`
+        comment: `命中 ${(accuracy * 100).toFixed(0)}%，最长连击 ${this.stats.maxCombo}。` +
+          (rank === 'S' ? '轮机组配合默契，提前两天抵达孟买。' :
+            rank === 'A' ? '航行渐渐平稳，比原定行程提前半天。' : '轮机需要检修。福克会选择抢修或降速，没人因几次漏拍被留在海上。')
       });
     }, 1200);
   }
@@ -481,11 +530,12 @@ export class SteamOverdriveMiniGame extends MiniGame {
     ctx.strokeStyle = 'rgba(232, 205, 147, 0.32)';
     ctx.strokeRect(41, 85, w - 82, 34);
 
-    const progress = Math.min(1.0, this.animTime / this.songDuration);
+    const progress = this.practising ? this.practiceIndex / 3 : Math.min(1.0, this.animTime / this.songDuration);
     ctx.fillStyle = '#ead8ad';
     ctx.font = '600 14px "Baskerville", Georgia, serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`S.S. MONGOLIA  ·  红海轮机令  ·  ${this.shipAnim.speedKnots.toFixed(1)} 节`, 56, 107);
+    ctx.fillText(this.practising ? '轮机长的三拍练习 · 不计分，不耗航程' :
+      `S.S. MONGOLIA  ·  红海轮机令  ·  ${this.shipAnim.speedKnots.toFixed(1)} 节`, 56, 107);
 
     const meterX = w - 378;
     ctx.fillStyle = '#0d0a07';
@@ -497,7 +547,28 @@ export class SteamOverdriveMiniGame extends MiniGame {
     ctx.fillStyle = '#ead8ad';
     ctx.font = '600 12px ui-monospace, monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(`${Math.max(0, Math.ceil(this.songDuration - this.animTime))} SEC`, w - 54, 106);
+    ctx.fillText(this.practising ? `${this.practiceIndex}/3` :
+      `${Math.max(0, Math.ceil(this.songDuration - this.animTime))} SEC`, w - 54, 106);
+
+    ctx.fillStyle = 'rgba(24, 20, 16, 0.92)';
+    ctx.fillRect(180, 152, w - 360, 75);
+    ctx.fillStyle = '#f0dfbd';
+    ctx.textAlign = 'center';
+    ctx.font = '600 23px "Baskerville", serif';
+    const lesson = [
+      '第一拍 · 红音到圆环，按 D / 红键',
+      '第二拍 · 蓝音到圆环，按 K / 蓝键',
+      '第三拍 · 金色双音到圆环，按空格 / 中间金键',
+      '学会了 · 点这里，或再按一次动作键开始'
+    ];
+    const section = this.animTime < 10 ? '稳住 · 先找到轮机的呼吸' : this.animTime < 22
+      ? '提速 · 红蓝交替，别追着音符抢拍' : this.animTime < 36
+        ? '破浪 · 听住低鼓，跟上连拍' : '最后一段 · 孟买就在前方';
+    ctx.fillText(this.practising ? lesson[this.practiceIndex] : section, w / 2, 183);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#cdbb99';
+    ctx.fillText(this.practising ? '练习不扣分 · 按 Enter 或点这行，跳过练习直接航行' :
+      (this.stats.isFever ? '整组轮机合奏中 · 保持你的节拍' : '连击会带起轮机合奏 · 漏拍后从下一拍接回来'), w / 2, 211);
   }
 
   // 绘制双轨节奏音符轨道
@@ -573,6 +644,7 @@ export class SteamOverdriveMiniGame extends MiniGame {
     }
 
     // 轨道指示文字
+    ctx.textAlign = 'left';
     ctx.font = '600 13px "Baskerville", Georgia, serif';
     ctx.fillStyle = '#d49a87';
     ctx.fillText('🔴 咚 · D / A / ←', 24, this.trackY - 38);
@@ -703,10 +775,10 @@ export class SteamOverdriveMiniGame extends MiniGame {
     const j = this.currentJudgment;
     ctx.fillStyle = j.color;
     ctx.shadowColor = j.color;
-    ctx.shadowBlur = 24;
-    ctx.font = 'bold 42px "Baskerville", serif';
+    ctx.shadowBlur = 4;
+    ctx.font = 'bold 27px "Baskerville", serif';
     ctx.textAlign = 'center';
-    ctx.fillText(j.text, this.hitZoneX + 130, this.trackY + 14);
+    ctx.fillText(j.text, 640, 500);
     ctx.restore();
   }
 

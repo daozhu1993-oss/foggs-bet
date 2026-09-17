@@ -1,10 +1,10 @@
-// 《Fogg 的赌约》· 关6 日本横滨长鼻马戏团与主仆重聚 (Leg 6: Yokohama Circus Reunited)
+// 横滨：台上主动相认，或接受后台寻找的半天代价；确认前不写入旅程。
 import { dialogue } from '../shell/dialogue.js';
 import { resolveLeg } from '../core/resolve.js';
 import { resultCard } from '../shell/resultCard.js';
+import { decisionModal } from '../shell/decisionModal.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
-import { gameState } from '../core/state.js';
 
 export async function runLeg6({ gameRunner, hud }) {
   hud.setLocation('日本横滨 ➔ 太平洋');
@@ -26,63 +26,52 @@ export async function runLeg6({ gameRunner, hud }) {
     }
   ]);
 
-  let keepRetrying = true;
-  let finalGameResult = null;
-
-  while (keepRetrying) {
-    const gameResult = await gameRunner.runMiniGame('circusAcrobat', {
-      difficulty: 1,
-      title: '横滨长鼻马戏团·叠罗汉物理平衡与重聚'
+  let finalRecord;
+  while (!finalRecord) {
+    const performance = await gameRunner.runMiniGame('circusAcrobat', {
+      difficulty: 1, title: '横滨 · 再演最后一场'
     });
-
-    finalGameResult = gameResult;
-    arcadeManager.saveHighScore('circusAcrobat', gameResult.score || 0);
-
-    let daysDelta = gameResult.daysDelta || 0;
-    let moneyDelta = 0;
-    let comment = gameResult.comment || '福克：「长鼻天狗轰然倒塌，路路通归队，即刻启程横渡太平洋！」';
-
-    const action = await resultCard.show({
-      title: '第六章完成：横滨长鼻杂技团奇迹重聚',
-      subtitle: '天狗金字塔轰然倒塌，主仆二人紧紧相拥！',
-      result: gameResult.result || 'good',
-      baseDays: 1.0,
-      daysDelta,
-      moneyDelta,
-      score: gameResult.score || 0,
-      badge: '🎭 扶桑天狗杂技大师',
-      comment
-    });
-
-    if (action === 'next' || action === 'continue') {
-      keepRetrying = false;
+    arcadeManager.saveHighScore('circusAcrobat', performance.score || 0);
+    const backstage = !performance.reunited;
+    if (backstage) {
+      const recovery = await decisionModal.show({
+        title: '幕布落下了，还没有相认',
+        desc: performance.comment || '福克正在询问班主，路路通还在后台。可以重试演出，也可以接受寻找的时间。',
+        options: [
+          { id: 'backstage', label: '到后台寻找路路通', subText: '额外耗时 +0.5 天 · 不增加旅费 · 同伴归队，但不记演出成功' },
+          { id: 'retry', label: '只重试横滨演出', subText: '本次失手不扣天数或旅费 · 不重跑南海' }
+        ]
+      });
+      if (recovery.id === 'retry') continue;
     }
-  }
-
-  if (finalGameResult) {
-    resolveLeg('leg6', {
-      title: '第六关 · 横滨长鼻杂技团奇迹重聚',
-      result: finalGameResult.result || 'good',
-      baseDays: 1.0,
-      daysDelta: finalGameResult.daysDelta || 0,
-      moneyDelta: 0,
-      flags: finalGameResult.flags || { passepartoutReunited: true },
-      stamp: {
-        id: 'yokohama',
-        city: '大日本帝国横滨港',
-        date: '第 42 天',
-        label: '横滨长鼻团重聚签证',
-        color: 'yokohama'
-      },
-      comment: finalGameResult.comment
-    });
+    const record = {
+      legId: 'leg6', title: backstage ? '第六关 · 后台找回同伴' : '第六关 · 台下熟悉的身影',
+      result: backstage ? 'pass' : performance.result,
+      baseDays: 1, daysDelta: backstage ? 0.5 : (performance.daysDelta || 0),
+      moneyDelta: 0, score: performance.score || 0,
+      flags: { passepartoutReunited: true, circusReunited: !backstage,
+        passedYokohamaCircus: !backstage && !!performance.flags?.passedYokohamaCircus,
+        circusBackstageSearch: backstage },
+      stamp: { id: 'yokohama', city: '横滨', color: 'yokohama',
+        label: backstage ? '后台寻人 · 同伴归队' : '马戏团 · 主仆重聚' },
+      comment: backstage
+        ? '没能在台上相认。福克询问班主，终于在后台找到了路路通；多用了半天，没有增加旅费。演出的失手仍如实保留。'
+        : performance.comment
+    };
+    const action = await resultCard.show(record);
+    if (action === 'next' || action === 'continue') {
+      resolveLeg('leg6', record);
+      finalRecord = record;
+    }
   }
 
   await dialogue.playSequence([
     {
       speaker: '让·路路通',
       avatar: 'passepartout',
-      text: '福克先生！艾娥达夫人！我终于找到你们了！'
+      text: finalRecord.flags.circusBackstageSearch
+        ? '我还以为再也找不到你们了。原来您一直在找我。'
+        : '我在人梯上看见您，哪里还顾得上继续演出。福克先生，我回来了！'
     },
     {
       speaker: '斐利亚·福克',

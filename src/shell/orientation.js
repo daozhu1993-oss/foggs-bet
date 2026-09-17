@@ -1,4 +1,5 @@
 // 屏幕方向检测与 1280x720 等比缩放适配器
+import { events } from '../core/events.js';
 export class OrientationAdapter {
   constructor() {
     this.container = document.getElementById('game-container');
@@ -20,7 +21,10 @@ export class OrientationAdapter {
   handleResize() {
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
-    const isPortrait = windowHeight > windowWidth && windowWidth < 768;
+    // 电脑侧栏也可能很窄，不能要求桌面用户“旋转手机”才能进入。
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isPortrait = isTouchDevice && windowHeight > windowWidth && windowWidth < 768;
+    if (isPortrait) events.emit('game:portrait');
 
     // 1. 竖屏提示
     if (this.guard) {

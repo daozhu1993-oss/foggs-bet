@@ -2,6 +2,8 @@ import { sound } from '../engine/audio.js';
 import { TimeManager } from '../core/time.js';
 import { MoneyManager } from '../core/money.js';
 import { gameState } from '../core/state.js';
+import { previewLeg } from '../core/resolve.js';
+import { getJourneyStatus } from '../core/journey.js';
 
 export class ResultCard {
   constructor() {
@@ -48,15 +50,31 @@ export class ResultCard {
   show(record) {
     return new Promise((resolve) => {
       this.resolvePromise = resolve;
+      const arcade = record.mode === 'arcade';
+      const preview = previewLeg(record);
+      this.modal.querySelector('.result-stats-row').classList.toggle('hidden', arcade);
+      const score = document.getElementById('result-score-detail');
+      score.textContent = record.score === undefined ? '' : `本次 ${Math.round(record.score)} 分${arcade ? ` · 个人最佳 ${record.bestScore} 分` : ''}`;
+      const impact = document.getElementById('result-journey-impact');
+      if (arcade) impact.textContent = '自由挑战 · 主线存档保持不变';
+      else {
+        const state = gameState.get();
+        const legId = record.legId || state.currentLeg;
+        const after = { ...state, time: { ...state.time, elapsed: preview.elapsedAfter },
+          legResults: { ...state.legResults, [legId]: record } };
+        impact.textContent = `${getJourneyStatus(after).pace} · 确认后余款 ${MoneyManager.formatGBP(preview.remainingGBP)}${preview.elapsedAfter > state.time.totalDays ? ' · 已超过八十天' : ''}`;
+      }
+      this.btnNext.textContent = arcade ? '回到自由挑战' : '确认账单 · 继续旅程 ➔';
+      this.btnRetry.textContent = '再试一次 · 不重复扣费';
 
       if (this.titleEl) this.titleEl.textContent = record.title || '航段完成';
 
       if (this.ribbonEl) {
         if (record.result === 'perfect') {
-          this.ribbonEl.textContent = '★ PERFECT 完美节约 ★';
+          this.ribbonEl.textContent = '★ 表现出色';
           this.ribbonEl.style.background = '#8b1e1e';
         } else if (record.result === 'good') {
-          this.ribbonEl.textContent = '✔ GOOD 按期抵达 ✔';
+          this.ribbonEl.textContent = '顺利完成';
           this.ribbonEl.style.background = '#1a4329';
         } else {
           this.ribbonEl.textContent = '⚠ 经历波折 ⚠';
@@ -65,8 +83,8 @@ export class ResultCard {
       }
 
       const daysDelta = record.daysDelta || 0;
-      const daysSpent = record.daysSpent !== undefined ? record.daysSpent : Math.max(0, Math.round(((record.baseDays || 0) + daysDelta) * 10) / 10);
-      const remainingDays = record.remainingDays !== undefined ? record.remainingDays : gameState.getRemainingDays();
+      const daysSpent = preview.daysSpent;
+      const remainingDays = preview.remainingDays;
       const moneyDelta = record.moneyDelta || 0;
 
       if (this.daysDiffEl) {
@@ -89,7 +107,7 @@ export class ResultCard {
       }
 
       if (this.modal) this.modal.classList.remove('hidden');
-      sound.playVictory();
+      if (record.result === 'perfect' || record.result === 'good') sound.playVictory();
     });
   }
 

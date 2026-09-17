@@ -16,7 +16,7 @@ function cleanModule(code) {
 }
 
 function build() {
-  console.log('--- 开始构建《Fogg 的赌约》v6.0 终极全要素纯透明精灵单文件版 ---');
+  console.log('构建《Fogg 的赌约》v96 手机双指与触控增强版');
 
   const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf-8');
   const css = fs.readFileSync(path.join(__dirname, 'style.css'), 'utf-8');
@@ -30,6 +30,7 @@ function build() {
     'src/core/money.js',
     'src/core/storage.js',
     'src/core/resolve.js',
+    'src/core/journey.js',
     'src/core/relics.js',
     'src/engine/dynamicAudio.js',
     'src/engine/ambientAudio.js',
@@ -50,6 +51,7 @@ function build() {
     'src/shell/map.js',
     'src/shell/passport.js',
     'src/shell/resultCard.js',
+    'src/shell/confirmModal.js',
     'src/shell/shareCard.js',
     'src/shell/arcade.js',
     'src/minigames/_base/MiniGame.js',
@@ -97,7 +99,7 @@ function build() {
 
   const outPath = path.join(__dirname, 'Fogg赌约_双击直接玩.html');
   fs.writeFileSync(outPath, bundledHtml, 'utf-8');
-  console.log(`✅ 成功生成单文件离线版: ${outPath} (${(bundledHtml.length / (1024 * 1024)).toFixed(2)} MB)`);
+  console.log(`✅ 成功生成单文件离线版: ${outPath} (${(Buffer.byteLength(bundledHtml, 'utf8') / (1024 * 1024)).toFixed(2)} MiB)`);
 
   const distDir = path.join(__dirname, 'dist');
   if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);

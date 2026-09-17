@@ -17,12 +17,12 @@ export async function runLeg1({ gameRunner, hud }) {
     {
       speaker: '让·路路通',
       avatar: 'passepartout',
-      text: '呼……呼！多佛港的风好大！前往苏伊士的「蒙古号」轮船马上就要起锚离港了，必须全速冲刺！'
+      text: '去加来的渡轮要收跳板了！先生，旅行袋给我——这些货箱，我翻得过去。'
     },
     {
-      speaker: '侦探菲克斯',
-      avatar: 'fix',
-      text: '（暗中观察）这位绅士行色匆匆，随从还提着沉甸甸的旅行袋……像极了刚刚洗劫英格兰银行五万英镑的江洋大盗！我倒要一路“陪”你们走！'
+      speaker: '斐利亚·福克',
+      avatar: 'fogg',
+      text: '我在船边接你。过海后乘火车到布林迪，再换蒙古号去苏伊士。我们先赶上眼前这一班。'
     }
   ]);
 
@@ -46,8 +46,8 @@ export async function runLeg1({ gameRunner, hud }) {
       if (sceneBackdrop) sceneBackdrop.setBackdrop('dover');
 
       const choice = await decisionModal.show({
-        title: '福克的紧急决策：误了苏伊士班轮',
-        desc: '由于在码头遭到阻挠，错过了原定班轮的跳板！福克先生，接下来的行动方案是？',
+        title: '跳板收起以后',
+        desc: '多佛渡轮离港了，后面的火车和轮船不会为我们停下。要用旅费追回时间，还是把余款留给下一程？',
         options: [
           {
             id: 'charter_boat',
@@ -60,7 +60,7 @@ export async function runLeg1({ gameRunner, hud }) {
           },
           {
             id: 'wait_next',
-            label: '【节约开销】在苏伊士港等待下一班定期轮船',
+            label: '留在多佛，等下一班渡轮重新衔接行程',
             subText: '耗时 +1.5 天 (资金无损失)',
             costColor: '#a86d23',
             moneyDelta: 0,
@@ -84,6 +84,7 @@ export async function runLeg1({ gameRunner, hud }) {
       baseDays: 7.0,
       daysDelta,
       moneyDelta,
+      score: gameResult.score,
       stamp: gameResult.stamp,
       flags,
       comment

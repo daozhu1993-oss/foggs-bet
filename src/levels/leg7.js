@@ -4,7 +4,6 @@ import { resolveLeg } from '../core/resolve.js';
 import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
-import { gameState } from '../core/state.js';
 
 export async function runLeg7({ gameRunner, hud }) {
   hud.setLocation('美利坚旧金山 ➔ 太平洋大铁路');
@@ -31,63 +30,46 @@ export async function runLeg7({ gameRunner, hud }) {
     }
   ]);
 
-  let keepRetrying = true;
-  let finalGameResult = null;
-
-  while (keepRetrying) {
+  while (true) {
     const gameResult = await gameRunner.runMiniGame('sanFranciscoBrawl', {
       difficulty: 1,
       title: '旧金山选战·淘金酒馆与街头格斗'
     });
 
-    finalGameResult = gameResult;
     arcadeManager.saveHighScore('sanFranciscoBrawl', gameResult.score || 0);
-
-    let daysDelta = 0;
-    let moneyDelta = -200; // 购买新礼帽与替换衣物
-    let comment = gameResult.comment || '福克：「击退暴徒，准时登上横贯北美大陆列车！」';
-
-    const action = await resultCard.show({
-      title: '第七章完成：旧金山大暴动从容突围',
-      subtitle: '横渡太平洋抵美，击退暴徒登上横贯大陆列车！',
-      result: gameResult.result || 'good',
+    const reached = gameResult.reached === true;
+    const knockedOut = gameResult.outcome === 'knockout';
+    const record = {
+      title: knockedOut ? '第七关 · 击退阻拦' : reached ? '第七关 · 掩护同伴脱身' : '第七关 · 休整后继续旅行',
+      subtitle: reached ? '离开混乱街区，前往横贯大陆列车。' : '本次街斗失手；可重试，或接受半天休整后乘车。',
+      result: reached ? gameResult.result : 'pass',
       baseDays: 21.0,
-      daysDelta,
-      moneyDelta,
+      daysDelta: gameResult.daysDelta ?? (reached ? 0 : 0.5),
+      moneyDelta: -200, // 购买新礼帽与替换衣物；仅接受最终账单时扣除。
       score: gameResult.score || 0,
-      badge: '🥊 蒙哥马利街突围英雄',
-      comment
-    });
-
-    if (action === 'next' || action === 'continue') {
-      keepRetrying = false;
-    }
-  }
-
-  if (finalGameResult) {
-    resolveLeg('leg7', {
-      title: '第七关 · 太平洋横渡与旧金山选战突围',
-      result: finalGameResult.result || 'good',
-      baseDays: 21.0,
-      daysDelta: finalGameResult.daysDelta || 0,
-      moneyDelta: -200,
-      flags: finalGameResult.flags || { brawlWon: true },
+      badge: knockedOut ? '🥊 击退上校' : reached ? '🛡️ 同伴的守护者' : '🚂 休整后上路',
+      flags: { sfBrawlWon: knockedOut, proctorKnockedOut: knockedOut,
+        sfEscaped: gameResult.outcome === 'escape', sfRestRecovery: !reached },
       stamp: {
         id: 'sanfrancisco',
         city: '旧金山海关与市政厅',
-        date: '第 55 天',
-        label: '太平洋大铁路登车印',
+        label: reached ? '太平洋大铁路登车印' : '休整换乘记录',
         color: 'sanfrancisco'
       },
-      comment: finalGameResult.comment
-    });
+      comment: `${gameResult.comment || '路路通与同伴在车站会合。'} 衣物更换 £200，重试不重复收费。`
+    };
+    const action = await resultCard.show(record);
+    if (action === 'next' || action === 'continue') {
+      resolveLeg('leg7', record);
+      break;
+    }
   }
 
   await dialogue.playSequence([
     {
-      speaker: '列车列车长',
+      speaker: '列车长',
       avatar: 'reform_club',
-      text: '鸣笛——！太平洋联合大铁路列车起锚！横穿内华达山脉、盐湖城与洛矶山脉，终点站：芝加哥与纽约！'
+      text: '鸣笛——！列车启程！穿过内华达山脉、盐湖城与洛矶山脉，再转车去芝加哥与纽约！'
     }
   ]);
 

@@ -16,6 +16,9 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     this.gameState = 'intro';
     this.introTimer = 1.6;
     this.koTimer = 0;
+    this.outcome = null;
+    this.playerParticipated = false;
+    this.pendingAttacks = [];
 
     // P1: 让·路路通 (Passepartout - Savate Fighter)
     this.p1 = {
@@ -83,6 +86,9 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     this.gameState = 'intro';
     this.introTimer = 1.6;
     this.koTimer = 0;
+    this.outcome = null;
+    this.playerParticipated = false;
+    this.pendingAttacks = [];
     this.hitStopTimer = 0;
     this.inputBuffer = [];
 
@@ -135,22 +141,47 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       showDpad: true,
       showA: true,
       showB: true,
+      showC: false,
       labelA: '刺拳 [J]',
       labelB: '重踢 [K]'
     });
 
     if (this.sound.music) this.sound.music.playTheme('brawl');
     this.sound.playSteamWhistle();
-    this.fx.toast('【仿 Spine 极速流畅格斗】[J] 刺拳 ➔ [K] 重踢 ➔ [W+J] 升龙 ➔ [Q/B/U/I/O] 一键超必杀取消连段！', 6000);
+    this.fx.toast('护住同伴：J 出拳、K 踢击，后退格挡。能量达到 50% 时轻按 Q 发动组合技。', 4500);
   }
 
   queueInput(cmd) {
+    this.playerParticipated = true;
     this.inputBuffer.push({ cmd, time: 0.16 });
   }
 
   update(rawDt) {
     if (!this.running || this.paused) return;
-    const dt = Math.max(0.0001, rawDt || 0.016);
+    const dt = Math.min(0.05, Math.max(0, Number.isFinite(rawDt) ? rawDt : 0));
+    if (!dt) return;
+
+    const inp = this.input ? this.input.input : null;
+    const keys = inp?.keys || {};
+    const btns = inp?.buttons || {};
+    const axis = inp?.axis || { x: 0, y: 0 };
+    const pointer = inp?.pointer || {};
+    const pressed = inp?.justKeys || {};
+    const overSuperButton = pointer.x >= 110 && pointer.x <= 410 && pointer.y >= 630 && pointer.y <= 700;
+
+    // 停顿只冻结动作；这一帧的短按仍须进入已有缓冲，不能被 endFrame 丢弃。
+    if (this.gameState === 'fight') {
+      if ((pointer.justDown && overSuperButton) || btns.justC || pressed.KeyQ || pressed.KeyB || pressed.KeyU || pressed.KeyI || pressed.KeyO || pressed.Digit4 || pressed.Digit5 || pressed.Digit6 ||
+          ((pressed.KeyJ || keys.KeyJ) && (pressed.KeyK || keys.KeyK) && (pressed.KeyJ || pressed.KeyK))) {
+        this.queueInput('super');
+      } else if ((keys.KeyW || keys.ArrowUp || btns.up) && (pressed.KeyJ || pressed.Space || btns.justA)) {
+        this.queueInput('rising_kick');
+      } else if (pressed.KeyK || btns.justB || pressed.KeyL) {
+        this.queueInput('kick');
+      } else if (pressed.KeyJ || pressed.Space || btns.justA) {
+        this.queueInput('punch');
+      }
+    }
 
     // Hit-stop 受击定帧
     if (this.hitStopTimer > 0) {
@@ -186,7 +217,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     // 终结 KO 慢动作与帽子抛物线物理
     if (this.gameState === 'ko') {
       this.koTimer += dt;
-      if (this.p2.hatOffset) {
+      if (this.outcome === 'knockout' && this.p2.hatOffset) {
         this.p2.hatOffset.x += this.p2.hatOffset.vx * dt;
         this.p2.hatOffset.y += this.p2.hatOffset.vy * dt;
         this.p2.hatOffset.vy += 800 * dt;
@@ -199,10 +230,11 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       }
 
       if (this.koTimer > 2.0) {
+        if (this.outcome === 'defeat') { this.finishGame(); return; }
         this.gameState = 'victory';
         this.sound.playVictory();
         this.sound.playSteamWhistle();
-        this.fx.toast('🚂 汽笛长鸣！普罗克托上校彻底折服！全员飞身跃上太平洋大铁路列车！', 4500);
+        this.fx.toast(this.outcome === 'knockout' ? '拦路的上校倒下了。趁路口让开，带同伴去车站。' : '同伴已经走出混乱街区。不必再缠斗，去车站会合。', 3500);
       }
       return;
     }
@@ -228,40 +260,9 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       if (this.p1.comboTimer <= 0) this.p1.comboCount = 0;
     }
 
-    const inp = this.input ? this.input.input : null;
-    const keys = inp ? (inp.keys || {}) : {};
-    const btns = inp ? (inp.buttons || {}) : {};
-    const axis = inp ? (inp.axis || { x: 0, y: 0 }) : { x: 0, y: 0 };
-    const pointer = inp ? (inp.pointer || {}) : {};
-
     // 自动朝向
     this.p1.facing = this.p2.x >= this.p1.x ? 1 : -1;
     this.p2.facing = this.p1.x >= this.p2.x ? 1 : -1;
-
-    // 1. 采集按键压入缓冲
-    if (keys['KeyQ'] || keys['KeyB'] || keys['KeyU'] || keys['KeyI'] || keys['KeyO'] || keys['Digit4'] || keys['Digit5'] || keys['Digit6'] || (keys['KeyJ'] && keys['KeyK'])) {
-      this.queueInput('super');
-      keys['KeyQ'] = false;
-      keys['KeyB'] = false;
-      keys['KeyU'] = false;
-      keys['KeyI'] = false;
-      keys['KeyO'] = false;
-    }
-    if ((keys['KeyW'] || keys['ArrowUp'] || btns.up) && (keys['KeyJ'] || keys['Space'] || btns.justA)) {
-      this.queueInput('rising_kick');
-      keys['KeyJ'] = false;
-      keys['Space'] = false;
-    }
-    if (keys['KeyK'] || btns.justB || keys['KeyL']) {
-      this.queueInput('kick');
-      keys['KeyK'] = false;
-      keys['KeyL'] = false;
-    }
-    if (keys['KeyJ'] || keys['Space'] || btns.justA) {
-      this.queueInput('punch');
-      keys['KeyJ'] = false;
-      keys['Space'] = false;
-    }
 
     // 2. 状态机与动画帧更新
     if (this.p1.actionTimer > 0) {
@@ -318,21 +319,19 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       if (keys['ArrowLeft'] || keys['KeyA'] || btns.left || axis.x < -0.2) moveDir -= 1;
       if (keys['ArrowRight'] || keys['KeyD'] || btns.right || axis.x > 0.2) moveDir += 1;
 
-      if (pointer.down) {
-        if (pointer.x >= 110 && pointer.x <= 410 && pointer.y >= 630 && pointer.y <= 700) {
-          if (this.p1.exGauge >= 50) this.executeP1Super();
-        } else {
-          const dx = pointer.x - this.p1.x;
-          if (Math.abs(dx) > 30) moveDir = Math.sign(dx);
-        }
+      if ((pointer.down || pointer.justDown) && !overSuperButton) {
+        const dx = pointer.x - this.p1.x;
+        if (Math.abs(dx) > 30) moveDir = Math.sign(dx);
       }
 
       const isRetreating = (moveDir === -1 && this.p1.facing === 1) || (moveDir === 1 && this.p1.facing === -1);
 
       if (isRetreating) {
+        this.playerParticipated = true;
         this.p1.action = 'guard';
         this.p1.x += moveDir * 200 * dt;
       } else if (moveDir !== 0) {
+        this.playerParticipated = true;
         this.p1.action = 'walk';
         this.p1.x += moveDir * 420 * dt;
         // 跑步留残影
@@ -344,6 +343,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       }
 
       if ((keys['ArrowUp'] || keys['KeyW'] || btns.up) && this.p1.isGrounded && this.p1.action !== 'rising_kick') {
+        this.playerParticipated = true;
         this.p1.vy = -640;
         this.p1.isGrounded = false;
         this.sound.playJump();
@@ -361,7 +361,20 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     }
 
     // ==================== 5. P2 / Boss AI 行动与招式 ====================
+    // 攻击前摇跟随游戏时间，锁屏、暂停或离开本局都不能继续命中。
+    const due = [];
+    this.pendingAttacks = this.pendingAttacks.filter(attack => {
+      attack.delay -= dt;
+      if (attack.delay <= 0) { due.push(attack); return false; }
+      return true;
+    });
+    for (const attack of due) {
+      if (this.gameState !== 'fight') break;
+      attack.run();
+    }
+    if (this.gameState !== 'fight') return;
     this.updateP2BossAI(dt);
+    if (this.gameState !== 'fight') return;
 
     // ==================== 6. 飞行投掷物物理更新 ====================
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -403,7 +416,10 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     }
 
     if (this.timer <= 0 && this.gameState === 'fight') {
-      this.triggerKO(this.p1.health >= this.p2.health / 10 ? 'p1' : 'p2');
+      this.outcome = this.p1.health > 0 && this.playerParticipated ? 'escape' : 'defeat';
+      this.gameState = 'ko';
+      this.koTimer = 0;
+      this.pendingAttacks = [];
     }
   }
 
@@ -558,7 +574,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     }
 
     if (this.p2.action === 'idle' || this.p2.action === 'walk') {
-      if (dist > 110) {
+      if (dist >= 90) {
         this.p2.x += this.p2.facing * 240 * dt;
         this.p2.action = 'walk';
       } else {
@@ -574,7 +590,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
           this.p2.attackCooldown = 1.3;
           this.sound.playWhoosh();
 
-          setTimeout(() => {
+          this.pendingAttacks.push({ delay: 0.12, run: () => {
             if (Math.abs(this.p1.x - this.p2.x) < 95 && this.p1.invulnerableTimer <= 0) {
               const isGuarding = this.p1.action === 'guard';
               const dmg = isGuarding ? 6 : 24;
@@ -587,7 +603,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
               this.fx.addFloatText(this.p1.x, this.p1.y - 40, (isGuarding ? '🛡️ 格挡勾拳! -6' : '🥊 重拳命中! -24'), '#ff4d4d');
               if (this.p1.health <= 0) this.triggerKO('p2');
             }
-          }, 120);
+          } });
 
         } else if (r < 0.75 && dist > 200) {
           this.p2.action = 'shoot';
@@ -597,7 +613,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
           this.sound.playPop();
 
           [-10, 0, 10].forEach((offY, idx) => {
-            setTimeout(() => {
+            this.pendingAttacks.push({ delay: idx * 0.12, run: () => {
               this.projectiles.push({
                 x: this.p2.x + this.p2.facing * 45,
                 y: this.p2.y - 20 + offY,
@@ -605,7 +621,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
                 power: 18,
                 alive: true
               });
-            }, idx * 120);
+            } });
           });
         } else if (dist > 180) {
           this.p2.action = 'charge';
@@ -620,6 +636,9 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
   }
 
   triggerKO(winner) {
+    if (!this.running || this.paused || this.gameState !== 'fight') return;
+    this.outcome = winner === 'p1' ? 'knockout' : 'defeat';
+    this.pendingAttacks = [];
     this.gameState = 'ko';
     this.koTimer = 0;
     this.hitStopTimer = 0.4;
@@ -636,7 +655,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       this.sound.playVictory();
       if (this.camera) this.camera.addTrauma(0.85);
       physicsDebris.spawnCoinFountain(this.p2.x, this.p2.y, 40);
-      this.fx.addFloatText(640, 260, '👑 K.O.! PERFECT VICTORY! 👑', '#ffd700');
+      this.fx.addFloatText(640, 260, 'K.O. · 路口让开了！', '#ffd700');
     } else {
       this.p1.action = 'knockdown';
       this.p1.health = 0;
@@ -646,26 +665,25 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
   }
 
   finishGame() {
-    this.running = false;
-    const isSuccess = this.p2.health <= 0 || this.p1.health > 0;
-    const rank = this.p2.health <= 0 && this.p1.health > 60 ? 'S' : (isSuccess ? 'A' : 'B');
-    const daysDelta = rank === 'S' ? -0.5 : 0;
-
-    this.sound.playVictory();
-
-    setTimeout(() => {
-      this.complete({
-        result: isSuccess ? 'perfect' : 'good',
+    if (!this.running || this.paused || this.completed) return;
+    const knockedOut = this.outcome === 'knockout';
+    const escaped = this.outcome === 'escape';
+    const reached = knockedOut || escaped;
+    const rank = knockedOut && this.p1.health > 60 ? 'S' : (reached ? 'A' : 'B');
+    this.pendingAttacks = [];
+    this.complete({
+        reached, outcome: knockedOut ? 'knockout' : escaped ? 'escape' : 'defeat',
+        result: rank === 'S' ? 'perfect' : reached ? 'good' : 'miss',
         rank,
-        score: (1000 - this.p2.health) * 5 + this.p1.health * 20 + 2000,
-        daysDelta,
+        score: Math.round(Math.max(0, this.p2.maxHealth - this.p2.health) * 5 + Math.max(0, this.p1.health) * 20 + (knockedOut ? 2000 : escaped ? 500 : 0)),
+        daysDelta: rank === 'S' ? -0.5 : reached ? 0 : 0.5,
         moneyDelta: -200,
-        flags: { sfBrawlWon: true, proctorKnockedOut: this.p2.health <= 0 },
-        comment: isSuccess
-          ? '让·路路通：「法式萨瓦特防身术把傲慢上校彻底击倒！旧金山大铁路列车鸣笛起航，直奔纽约！」'
-          : '一番激战终迫使普罗克托上校退却，众人安然登上列车横穿美洲。'
+        flags: { sfBrawlWon: knockedOut, proctorKnockedOut: knockedOut, sfEscaped: escaped },
+        comment: knockedOut
+          ? '上校被击倒，路口终于让开。路路通带同伴离开街区，前往车站。'
+          : escaped ? '没有击倒上校，但已护住同伴，等到了脱身的空当。路路通收手离开，去车站会合。'
+          : '路路通没能守住路口，需要同伴接应撤离。主线可重试，或接受半天休整后再乘车；不记击倒或突围成功。'
       });
-    }, 1000);
   }
 
   render(ctx) {
@@ -760,7 +778,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       ctx.shadowBlur = 35;
       ctx.font = '900 86px "Baskerville", serif';
       ctx.textAlign = 'center';
-      ctx.fillText('K . O . !', w / 2, 330);
+      ctx.fillText(this.outcome === 'knockout' ? 'K . O . !' : this.outcome === 'escape' ? '掩护脱身' : '暂时退让', w / 2, 330);
       ctx.restore();
     }
 
@@ -771,6 +789,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
   drawStreetFighterHUD(ctx) {
     const w = this.canvas.width;
     ctx.save();
+    ctx.translate(0, 66);
 
     // 1. P1 血条 (左侧 绿金渐变)
     const barW = 420;
@@ -826,6 +845,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     ctx.font = '900 28px "Baskerville", serif';
     ctx.textAlign = 'center';
     ctx.fillText(Math.max(0, Math.ceil(this.timer)), w / 2, 68);
+    ctx.translate(0, -66);
 
     // 4. 底部 P1 EX 必杀能量槽 (Super Meter - 带有金色火焰脉冲与快捷释放按钮)
     const canSuper = this.p1.exGauge >= 50;
@@ -855,15 +875,15 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
     ctx.fillRect(112, 648, 296 * exProg, 26);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = '900 13px sans-serif';
+    ctx.font = '900 16px sans-serif';
     ctx.textAlign = 'center';
     if (canSuper) {
       ctx.shadowColor = '#000000';
       ctx.shadowBlur = 4;
-      ctx.fillText('🔥 [按 Q/B/U/I/O] 释放超必杀暴风连打! 🔥', 260, 666);
+      ctx.fillText('轻按 Q / 点这里 · 组合技', 260, 666);
       ctx.shadowBlur = 0;
     } else {
-      ctx.fillText('EX GAUGE: ' + Math.floor(this.p1.exGauge) + '% (50% 满能量)', 260, 666);
+      ctx.fillText('能量 ' + Math.floor(this.p1.exGauge) + '% · 50% 可用', 260, 666);
     }
 
     // 5. 连击数字特写 (Combo Counter)
@@ -873,7 +893,7 @@ export class SanFranciscoBrawlMiniGame extends MiniGame {
       ctx.shadowBlur = 18;
       ctx.font = '900 34px "Baskerville", serif';
       ctx.textAlign = 'left';
-      ctx.fillText(this.p1.comboCount + ' HITS COMBO!', 110, 115);
+      ctx.fillText(this.p1.comboCount + ' HITS COMBO!', 110, 185);
       ctx.shadowBlur = 0;
     }
 

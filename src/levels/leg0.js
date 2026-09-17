@@ -3,6 +3,7 @@ import { resolveLeg } from '../core/resolve.js';
 import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { decisionModal } from '../shell/decisionModal.js';
 
 export async function runLeg0({ gameRunner, hud }) {
   hud.setLocation('伦敦 · 改良俱乐部');
@@ -31,11 +32,25 @@ export async function runLeg0({ gameRunner, hud }) {
     {
       speaker: '斐利亚·福克',
       avatar: 'fogg',
-      text: '时间，是这局唯一输不起的东西。路路通，先来陪几位先生打完这局惠斯特牌。'
+      text: '赌约已定。我们可以打完手里这局牌，也可以即刻动身。去收拾旅行袋吧，路路通。'
     }
   ]);
 
-  let keepRetrying = true;
+  const opening = await decisionModal.show({
+    title: '第一班火车就要开了',
+    desc: '牌桌是福克的日常，但不是冒险的门槛。两种选择都能开启完整主线。',
+    options: [
+      { id: 'depart', label: '即刻出发', subText: '直接进入赶船关 · 带上 £20,000 旅费' },
+      { id: 'whist', label: '陪绅士们打完一局惠斯特', subText: '7 轮牌局 · 有机会赢取额外旅费' }
+    ]
+  });
+  if (opening.id === 'depart') {
+    resolveLeg('leg0', { title: '序章 · 立下赌约', result: 'good', baseDays: 0,
+      flags: { betAccepted: true, whistSkipped: true },
+      stamp: { id: 'london', city: '伦敦', date: '02 OCT 1872', label: '改良俱乐部 · 启程', color: 'london' },
+      comment: '放下手里的牌，把未知交给世界。' });
+  }
+  let keepRetrying = opening.id !== 'depart';
   while (keepRetrying) {
     // 2. 运行惠斯特小游戏
     const gameResult = await gameRunner.runMiniGame('whist', {
@@ -53,6 +68,7 @@ export async function runLeg0({ gameRunner, hud }) {
       baseDays: 0,
       daysDelta: gameResult.daysDelta || 0,
       moneyDelta: gameResult.moneyDelta || 0,
+      score: gameResult.score,
       stamp: gameResult.stamp,
       flags: gameResult.flags,
       comment: gameResult.comment
@@ -78,7 +94,7 @@ export async function runLeg0({ gameRunner, hud }) {
     {
       speaker: '让·路路通',
       avatar: 'passepartout',
-      text: '遵命，福克先生！一场横跨八十天的惊天狂澜，这就开始了！'
+      text: '先生，我才刚找到一份安稳工作……旅行袋好了。我们从哪边走？'
     }
   ]);
 

@@ -21,7 +21,9 @@ export class LondonFinaleMiniGame extends MiniGame {
     };
     this.dashTimer = 40.0;
     this.distance = 0;
-    this.targetDistance = 1500;
+    this.targetDistance = 3800;
+    this.epiphanyTimer = 0;
+    this.whipSoundTimer = 0;
     this.obstacles = [];
     this.spawnTimer = 0.5;
     this.score = 0;
@@ -35,6 +37,9 @@ export class LondonFinaleMiniGame extends MiniGame {
     this.phase = 1;
     this.tzOffset = 0;
     this.epiphanyUnlocked = false;
+
+    this.epiphanyTimer = 0;
+    this.whipSoundTimer = 0;
 
     this.cab.x = this.canvas.width / 2;
     this.cab.vx = 0;
@@ -59,6 +64,14 @@ export class LondonFinaleMiniGame extends MiniGame {
     const pointer = inp ? (inp.pointer || {}) : {};
 
     if (this.phase === 1) {
+      if (this.epiphanyUnlocked) {
+        this.epiphanyTimer -= dt;
+        if (this.epiphanyTimer <= 0) {
+          this.phase = 2;
+          this.fx.toast('按住空格加速，左右绕开行人。最后这一程，靠你了。', 3000);
+        }
+        return;
+      }
       if (keys['ArrowLeft'] || keys['KeyA'] || btns.left) this.tzOffset -= 14 * dt;
       if (keys['ArrowRight'] || keys['KeyD'] || btns.right) this.tzOffset += 14 * dt;
 
@@ -67,15 +80,13 @@ export class LondonFinaleMiniGame extends MiniGame {
         else if (pointer.x > this.canvas.width / 2 + 20) this.tzOffset += 16 * dt;
       }
 
-      if (this.tzOffset >= 20 || keys['Space'] || btns.justA) {
+      this.tzOffset = Math.max(0, Math.min(24, this.tzOffset));
+      if (this.tzOffset >= 24) {
         this.epiphanyUnlocked = true;
         this.sound.playBigBen();
-        this.fx.addFloatText(640, 320, '★ 顿悟！一路向东航行多得整整一天！今天是星期六！', '#ffd700');
+        this.fx.addFloatText(640, 320, '向东环游一周，日历应当往回拨一天。', '#ffd700');
         particles.emitSparkles(640, 360, 35);
-        setTimeout(() => {
-          this.phase = 2;
-          this.fx.toast('【绝杀冲刺】驾驶四轮特快马车直扑帕尔麦街改良俱乐部！', 3000);
-        }, 1200);
+        this.epiphanyTimer = 1.2;
       }
     } else {
       this.dashTimer -= dt;
@@ -93,16 +104,20 @@ export class LondonFinaleMiniGame extends MiniGame {
       this.cab.x += this.cab.vx * dt;
       this.cab.x = Math.max(130, Math.min(this.canvas.width - 130, this.cab.x));
 
-      if (keys['Space'] || keys['KeyJ'] || btns.justA) {
+      this.whipSoundTimer -= dt;
+      if (keys['Space'] || keys['KeyJ'] || btns.A) {
         this.cab.speed = Math.min(68, this.cab.speed + 28 * dt);
-        this.sound.playWhoosh();
-        particles.emitSparks(this.cab.x, this.cab.y + 45, 4);
+        if (this.whipSoundTimer <= 0) {
+          this.sound.playWhoosh();
+          particles.emitSparks(this.cab.x, this.cab.y + 45, 4);
+          this.whipSoundTimer = 0.3;
+        }
       } else {
         this.cab.speed = Math.max(30, this.cab.speed - 10 * dt);
       }
 
       this.distance += this.cab.speed * 2.2 * dt;
-      this.score += Math.floor(this.cab.speed * dt);
+      this.score += this.cab.speed * dt;
 
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
@@ -138,17 +153,15 @@ export class LondonFinaleMiniGame extends MiniGame {
 
   finishGame() {
     this.running = false;
-    setTimeout(() => {
-      this.sound.playBigBen();
-      this.complete({
-        result: 'perfect',
-        rank: 'S',
-        score: this.score + 2000,
-        daysDelta: -1.0,
-        comment: '★ 历史性绝杀！福克先生在第 80 天 20 点 45 分跨入改良俱乐部大门！',
-        flags: { gameCompleted: true, betWon: true }
-      });
-    }, 800);
+    const reached = this.distance >= this.targetDistance;
+    const perfect = reached && this.dashTimer >= 6;
+    this.complete({
+      reached, result: perfect ? 'perfect' : reached ? 'good' : 'miss',
+      rank: perfect ? 'S' : reached ? 'A' : 'B',
+      score: Math.round(this.score) + (reached ? 2000 : 0),
+      daysDelta: reached ? -1 : 0,
+      comment: reached ? '赶到俱乐部。现在，核对你整段旅程的时间。' : '这班车没能及时赶到，最后一程多耗了一天。'
+    });
   }
 
   render(ctx) {
@@ -168,7 +181,7 @@ export class LondonFinaleMiniGame extends MiniGame {
       ctx.fillStyle = '#ffe87c';
       ctx.font = 'bold 24px "Baskerville", serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🌍 经度时空之谜 · 国际日期变更线日界线顿悟', w / 2, 65);
+      ctx.fillText('🌍 经度时空之谜 · 国际日期变更线日界线顿悟', w / 2, 100);
 
       // 巨型黄铜浑天仪同心圆环 (Brass Armillary Sphere)
       const cx = w / 2;
@@ -206,11 +219,11 @@ export class LondonFinaleMiniGame extends MiniGame {
       ctx.fillText('一路向东环球 ➔ 跨越 360° 经线 ➔ 夺回整整 24 小时！', cx, cy - 15);
       ctx.fillStyle = '#50e3c2';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('今天是 1872年12月21日 星期六！赌约尚未截止！', cx, cy + 30);
+      ctx.fillText(`向东经过 ${Math.floor(this.tzOffset)} / 24 个时区`, cx, cy + 30);
 
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('按 [空格] 或 [→] 确认顿悟，即刻启程飞车！', cx, 570);
+      ctx.fillText('按住 [→] 或触摸右半屏，转满一周。', cx, 570);
     } else {
       // 阶段二：实景 16:9 帕尔麦街煤气灯迷雾与大本钟手绘油画原画 (Pall Mall London Night Fog)
       if (this.londonNightBgImg && this.londonNightBgImg.complete && this.londonNightBgImg.naturalWidth > 0) {

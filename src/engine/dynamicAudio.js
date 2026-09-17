@@ -9,6 +9,8 @@ export class DynamicMusicEngine {
     this.isPlaying = false;
     this.tempo = 120;
     this.masterGain = null;
+    this.manual = false;
+    this.scheduledSources = new Set();
   }
 
   ensureContext() {
@@ -16,28 +18,31 @@ export class DynamicMusicEngine {
     this.ctx = this.sound.ctx;
     if (this.ctx && !this.masterGain) {
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+      this.masterGain.gain.setValueAtTime(this.sound.enabled ? 0.35 : 0, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
     }
   }
 
   // 播放指定场景主题曲
-  playTheme(themeName) {
-    if (!this.sound.enabled) return;
+  playTheme(themeName, { manual = false } = {}) {
+    if (this.sound.paused) return;
     this.ensureContext();
     if (!this.ctx) return;
 
-    if (this.currentTheme === themeName && this.isPlaying) return;
+    if (this.currentTheme === themeName && this.isPlaying && this.manual === manual) return;
 
     this.stopTheme();
     this.currentTheme = themeName;
     this.isPlaying = true;
     this.stepIndex = 0;
+    this.manual = manual;
+    // 音游由谱面传入绝对音频时间，不再另开一条会漂移的定时器。
+    if (manual) return;
 
     const intervalMs = themeName === 'iceRacer' ? 115 : (themeName === 'dover' ? 140 : (themeName === 'jungle' ? 160 : 220));
 
     this.loopTimer = setInterval(() => {
-      if (!this.isPlaying || !this.sound.enabled) return;
+      if (!this.isPlaying || !this.sound.enabled || this.sound.paused) return;
       this.tickThemeNote();
     }, intervalMs);
   }
@@ -49,11 +54,31 @@ export class DynamicMusicEngine {
     }
     this.isPlaying = false;
     this.currentTheme = null;
+    this.cancelScheduled();
+    this.manual = false;
   }
 
-  tickThemeNote() {
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
+  trackScheduledSource(source) {
+    if (!this.manual) return;
+    this.scheduledSources.add(source);
+    source.onended = () => {
+      this.scheduledSources.delete(source);
+      source.disconnect();
+    };
+  }
+
+  cancelScheduled() {
+    for (const source of this.scheduledSources) {
+      source.stop();
+      source.disconnect();
+    }
+    this.scheduledSources.clear();
+  }
+
+  tickThemeNote(now = this.ctx?.currentTime, stepIndex = this.stepIndex) {
+    if (!this.ctx || !this.sound.enabled || this.sound.paused || !Number.isFinite(now) || now < 0 ||
+        !Number.isInteger(stepIndex) || stepIndex < 0) return;
+    this.stepIndex = stepIndex;
 
     if (this.currentTheme === 'atlanticShanty') {
       // 160 BPM 狂暴爱尔兰海盗摇滚与风暴海浪节拍 (Celtic Sea Shanty Punk Rock Beat)
@@ -163,19 +188,9 @@ export class DynamicMusicEngine {
     this.stepIndex++;
   }
 
-  ensureContext() {
-    this.sound.resume();
-    this.ctx = this.sound.ctx;
-    if (this.ctx && !this.masterGain) {
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.65, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
-    }
-  }
-
   // 关2专用：纯正《太鼓达人》风格 120 BPM 四段式剧烈起伏鼓点与交响配乐 (零外部音频依赖)
   playSteamStep(stepIndex, isFever = false) {
-    if (!this.sound.enabled) return;
+    if (!this.sound.enabled || this.sound.paused) return;
     this.ensureContext();
     if (!this.ctx) return;
 
@@ -338,6 +353,8 @@ export class DynamicMusicEngine {
     osc2.start(now);
     osc1.stop(now + 0.18);
     osc2.stop(now + 0.1);
+    this.trackScheduledSource(osc1);
+    this.trackScheduledSource(osc2);
   }
 
   playTaikoRimShot(vol, now) {
@@ -362,6 +379,7 @@ export class DynamicMusicEngine {
 
     osc.start(now);
     osc.stop(now + 0.07);
+    this.trackScheduledSource(osc);
   }
 
   playTaikoBigDon(vol, now) {
@@ -388,6 +406,8 @@ export class DynamicMusicEngine {
     osc2.start(now);
     osc1.stop(now + 0.3);
     osc2.stop(now + 0.3);
+    this.trackScheduledSource(osc1);
+    this.trackScheduledSource(osc2);
   }
 
   playSynthPluck(freq, vol, duration, type, now, filterFreq = 1800) {
@@ -410,6 +430,7 @@ export class DynamicMusicEngine {
 
     osc.start(now);
     osc.stop(now + duration + 0.05);
+    this.trackScheduledSource(osc);
   }
 
   playNoiseHit(vol, duration, now, filterFreq = 2400) {
@@ -437,5 +458,6 @@ export class DynamicMusicEngine {
     gain.connect(this.masterGain || this.ctx.destination);
 
     noise.start(now);
+    this.trackScheduledSource(noise);
   }
 }

@@ -179,6 +179,7 @@ export class DialogueSystem {
   }
 
   handleAdvance() {
+    if (document.querySelector('.modal-overlay:not(.hidden), .briefing-overlay:not(.hidden)')) return;
     if (Date.now() < this.lastAdvanceTime) return;
     this.lastAdvanceTime = Date.now() + 80;
     if (this.isTyping) {

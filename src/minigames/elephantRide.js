@@ -65,7 +65,7 @@ export class ElephantRideMiniGame extends MiniGame {
   init() {
     this.elephant.x = 180;
     this.elephant.y = this.elephant.baseY;
-    this.elephant.vx = 460;
+    this.elephant.vx = 330;
     this.elephant.vy = 0;
     this.elephant.isGrounded = true;
     this.elephant.isDucking = false;
@@ -78,6 +78,11 @@ export class ElephantRideMiniGame extends MiniGame {
     this.elephant.isFeverMode = false;
     this.elephant.feverTimer = 0;
     this.elephant.hasRescuedAouda = false;
+    this.hitCount = 0;
+    this.sprayCooldown = 0;
+    this.jumpWasHeld = false;
+    this.finishDelay = null;
+    this.goalPodium.x = 3240;
 
     this.distanceRemainingMeters = 100;
     this.timeLimit = 55.0;
@@ -107,7 +112,7 @@ export class ElephantRideMiniGame extends MiniGame {
 
     this.sound.playElephantTrumpet();
     if (this.sound.music) this.sound.music.playTheme('jungle');
-    this.fx.toast('【战象跑酷】[空格/↑] 跳跃！[D/→] 冲撞碎石！[S/↓] 滑铲伏低！[B/K] 象鼻喷水！', 4500);
+    this.fx.toast('向导带路，奇阿尼自动前行。越过石障，低头避藤；火障可以跳过或喷水。', 3500);
 
     this.buildRunnerCourse();
   }
@@ -160,12 +165,19 @@ export class ElephantRideMiniGame extends MiniGame {
   }
 
   update(rawDt) {
+    if (!this.running || this.paused) return;
+    if (this.finishDelay !== null) {
+      this.finishDelay -= rawDt;
+      if (this.finishDelay <= 0) this.complete(this.rideResult);
+      return;
+    }
     if (this.goalPodium.reached) return;
 
     const dtScale = (typeof fx !== 'undefined' && fx && fx.getTimeDilation) ? fx.getTimeDilation() : 1.0;
     const dt = Math.max(0.0001, (rawDt || 0.016) * (dtScale || 1.0));
 
     this.timeLimit -= dt;
+    this.sprayCooldown = Math.max(0, this.sprayCooldown - dt);
     this.elephant.animTime += dt;
     physicsDebris.update(dt);
 
@@ -196,7 +208,7 @@ export class ElephantRideMiniGame extends MiniGame {
     const pointer = inp.pointer || {};
 
     // 3.1 狂暴冲撞 [D / → / KeyA / Action A / 双击]
-    const chargeInput = keys['KeyD'] || keys['ArrowRight'] || keys['KeyA'] || btns.right || btns.A || btns.actionA;
+    const chargeInput = keys['KeyD'] || keys['ArrowRight'] || btns.right;
     if (chargeInput && !this.elephant.isCharging) {
       this.elephant.isCharging = true;
       this.elephant.chargeTimer = 0.5;
@@ -209,7 +221,9 @@ export class ElephantRideMiniGame extends MiniGame {
 
     // 3.2 跳跃 [Space / W / ↑ / 点击屏幕上半区]
     let jumpTouch = pointer.justDown && pointer.y < 420;
-    const jumpInput = keys['Space'] || keys['KeyW'] || keys['ArrowUp'] || btns.up || btns.justA || jumpTouch;
+    const jumpHeld = !!(btns.A || btns.up);
+    const jumpInput = btns.justA || (jumpHeld && !this.jumpWasHeld) || jumpTouch;
+    this.jumpWasHeld = jumpHeld;
     if (jumpInput && this.elephant.isGrounded) {
       this.elephant.vy = this.elephant.jumpVelocity;
       this.elephant.isGrounded = false;
@@ -225,8 +239,9 @@ export class ElephantRideMiniGame extends MiniGame {
     this.elephant.isDucking = !!duckInput;
 
     // 3.4 象鼻水炮灭火 [B / K / Action B]
-    const sprayInput = keys['KeyB'] || keys['KeyK'] || btns.justB || btns.actionB;
-    if (sprayInput) {
+    const sprayInput = keys['KeyK'] || btns.B || btns.justB;
+    if (sprayInput && this.sprayCooldown === 0) {
+      this.sprayCooldown = 0.45;
       this.sound.playSteamWhistle();
       this.camera.addTrauma(0.2);
       this.fx.triggerHaptic(25);
@@ -246,8 +261,8 @@ export class ElephantRideMiniGame extends MiniGame {
 
     // 4. 速度推进与【关键修复：摄像机平滑锁定，大象永远在画面黄金位置】
     let curSpeed = this.elephant.vx;
-    if (this.elephant.isFeverMode) curSpeed = 720;
-    else if (this.elephant.isCharging) curSpeed = 650;
+    if (this.elephant.isFeverMode) curSpeed = 480;
+    else if (this.elephant.isCharging) curSpeed = 440;
 
     this.elephant.x += curSpeed * dt;
 
@@ -329,6 +344,12 @@ export class ElephantRideMiniGame extends MiniGame {
 
         if (inHitZone) {
           wall.broken = true;
+          if (!this.elephant.isCharging && !this.elephant.isFeverMode) {
+            this.hitCount++;
+            this.elephant.score = Math.max(0, this.elephant.score - 100);
+            this.fx.toast('碰到了石障 · 提前跳跃，或按 → 冲过', 1200);
+            continue;
+          }
           this.elephant.smashCount++;
           this.elephant.score += 300;
           this.sound.playCrash();
@@ -350,6 +371,7 @@ export class ElephantRideMiniGame extends MiniGame {
 
         if (inVineZone) {
           if (!this.elephant.isDucking && !this.elephant.isCharging && !this.elephant.isFeverMode) {
+            this.hitCount++;
             vine.cleared = true;
             this.elephant.score = Math.max(0, this.elephant.score - 100);
             this.sound.playCrash();
@@ -412,22 +434,15 @@ export class ElephantRideMiniGame extends MiniGame {
       }
     }
 
-    // 12. 高潮时刻：火祭神坛现场大营救 (Suttee Pagoda Rescue)
-    if (!this.templePyre.smashed && this.elephant.x + this.elephant.w > this.templePyre.x) {
-      this.templePyre.smashed = true;
-      this.elephant.hasRescuedAouda = true;
-      this.elephant.score += 1000;
-      this.sound.playVictory();
-      this.sound.playElephantTrumpet();
-      this.camera.addTrauma(0.65);
-      this.fx.flash('#ffd700', 300);
-      this.fx.hitstop(70);
-      physicsDebris.spawnStoneDebris(this.templePyre.x + 70, this.templePyre.y + 40, 24, 600);
-
-      this.elephant.isFeverMode = true;
-      this.elephant.feverTimer = 8.0;
-      this.fx.addFloatText(this.elephant.x + 60, this.elephant.y - 60, '👑 救出艾娥达夫人！全速突围！+1000', '#ffe87c');
-      particles.emitSparkles(this.elephant.x + 80, this.elephant.y, 35);
+    // 火障没有被扑灭时，实际跨过才算安全；抵达营地不等于已经营救。
+    for (const fire of this.fireWalls) {
+      if (!fire.passed && this.elephant.x + this.elephant.w > fire.x) {
+        fire.passed = true;
+        if (!fire.extinguished && this.elephant.y + this.elephant.h > fire.y) {
+          this.hitCount++;
+          this.fx.toast('火障擦伤 · 提前跳跃或喷水开路', 1200);
+        }
+      }
     }
 
     // 13. 抵达阿拉哈巴德终点
@@ -438,35 +453,26 @@ export class ElephantRideMiniGame extends MiniGame {
   }
 
   finishElephantGame() {
+    if (this.finishDelay !== null) return;
     this.sound.playVictory();
 
-    const isPerfect = this.elephant.score >= 1800 && this.elephant.smashCount >= 2;
+    const isPerfect = this.hitCount <= 1 && this.elephant.score >= 500;
     const rank = isPerfect ? 'S' : 'A';
-    const daysDelta = isPerfect ? -2.0 : -1.0;
+    const daysDelta = isPerfect ? -0.5 : 0;
 
-    setTimeout(() => {
-      this.complete({
+    this.finishDelay = 1;
+    this.rideResult = {
         result: rank === 'S' ? 'perfect' : 'good',
         rank,
         score: this.elephant.score,
         daysDelta,
-        stamp: {
-          id: 'calcutta',
-          city: 'CALCUTTA',
-          date: '25 OCT 1872',
-          label: '加尔各答·东印度总督签注',
-          color: 'calcutta'
-        },
         flags: {
           boughtElephant: true,
-          aoudaRescued: true,
           jungleRampageMaster: rank === 'S'
         },
-        comment: isPerfect
-          ? '福克：「奇阿尼真乃神象！一路冲撞破壁、灭火救人，提前整整两天赶抵加尔各答码头！」'
-          : '福克：「战象勇猛过人，艾娥达夫人已随我们安全抵达成加尔各答。」'
-      });
-    }, 1200);
+        comment: isPerfect ? '穿林顺畅，省下半天。向导示意停下：前面还有一件事，需要我们商量。'
+          : '奇阿尼在营地停下。先让它喘口气，再听向导说前面的事。'
+    };
   }
 
   render(ctx) {
@@ -494,7 +500,13 @@ export class ElephantRideMiniGame extends MiniGame {
     // 2. 终点：阿拉哈巴德 · 1872 维多利亚凯旋胜利巨拱门原画与盛大红毯狂欢
     const podX = this.goalPodium.x;
     const podY = this.goalPodium.y;
-    SpriteEngine.drawAllahabadVictoryGate(ctx, podX - 60, podY - 190, 540, 370, this.elephant.animTime);
+    ctx.fillStyle = '#3e3325';
+    ctx.fillRect(podX, 370, 12, 195);
+    ctx.fillStyle = '#d9c398';
+    ctx.fillRect(podX - 70, 360, 180, 46);
+    ctx.fillStyle = '#30271d';
+    ctx.font = '600 21px serif';
+    ctx.fillText('林间营地 · 前方停步', podX - 60, 390);
 
     // 3. 热带雨林青苔石道与青翠蕨类草木 (Ground)
     const groundY = this.elephant.baseY + this.elephant.h;
@@ -550,11 +562,6 @@ export class ElephantRideMiniGame extends MiniGame {
         SpriteEngine.drawFireAltar(ctx, fw.x - 5, fw.y - 15, fw.w + 10, fw.h + 20, this.elephant.animTime, fw.extinguished);
       }
     }
-
-    // 8. 绘制萨蒂火祭神庙宝刹现场高潮营救大原画 (Suttee Pagoda Shrine)
-    const px = this.templePyre.x;
-    const py = this.templePyre.y;
-    SpriteEngine.drawSutteePagodaShrine(ctx, px - 60, py - 90, this.templePyre.w + 160, this.templePyre.h + 90, this.elephant.animTime, this.templePyre.smashed);
 
     // 9. 绘制水炮粒子
     for (const wc of this.waterCannons) {
@@ -687,7 +694,7 @@ export class ElephantRideMiniGame extends MiniGame {
     ctx.font = '600 13px "Baskerville", serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText('🐘 柯尔比断轨', startX - 85, 87);
-    ctx.fillText('🛕 阿拉哈巴德', startX + barW + 10, 87);
+    ctx.fillText('林间营地', startX + barW + 10, 87);
 
     ctx.font = 'bold 15px "Baskerville", serif';
     ctx.fillStyle = this.timeLimit < 15 ? '#ff4d4d' : '#ffde59';

@@ -1964,9 +1964,11 @@ export class SpriteEngine {
     ctx.restore();
   }
 
-  static drawRhythmHighway(ctx, x, y, width, height, hitTargetX = 230, animTime = 0) {
+  static drawRhythmHighway(ctx, x, y, width, height, hitTargetX = 230, animTime = 0, beatInterval = 60 / 160) {
     ctx.save();
     ctx.translate(x, y);
+    // 判定点与音符同用画布坐标；控制台平移后只换算一次。
+    hitTargetX -= x;
 
     // =========================================================================
     // 1. 维多利亚黄铜与铸铁铆接机车控制台底盘 (Steampunk Locomotive Chassis)
@@ -2076,8 +2078,8 @@ export class SpriteEngine {
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // 内圈呼吸光晕
-      const nodePulse = Math.sin(animTime * 12 + l) * 0.2 + 0.8;
+      // 四轨同拍闪亮，与音乐和数拍提示共用节奏。
+      const nodePulse = Math.cos(animTime / beatInterval * Math.PI * 2) * 0.2 + 0.8;
       ctx.strokeStyle = laneThemes[l].stream;
       ctx.lineWidth = 2.5 * nodePulse;
       ctx.beginPath();
@@ -2088,7 +2090,7 @@ export class SpriteEngine {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
-      const keyLabel = l === 0 ? 'J / 🪓' : (l === 1 ? 'K / 🔥' : (l === 2 ? 'SPACE' : 'W / 🌊'));
+      const keyLabel = String(l + 1);
       ctx.fillText(keyLabel, hitTargetX, cy + 4);
     }
 

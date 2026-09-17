@@ -2,6 +2,7 @@ import { sound } from '../engine/audio.js';
 import { gameState } from '../core/state.js';
 import { events } from '../core/events.js';
 import { GameImages } from '../assets/images.js';
+import { getJourneyStatus } from '../core/journey.js';
 
 export class WorldMap {
   constructor() {
@@ -44,11 +45,14 @@ export class WorldMap {
     this.updateReachedStatus();
     this.startAnimation();
     sound.playCardFlip();
+    events.emit('ui:overlay', { id: 'map', open: true });
   }
 
   hide() {
     if (this.modal) this.modal.classList.add('hidden');
     if (this.animReq) cancelAnimationFrame(this.animReq);
+    document.activeElement?.blur();
+    events.emit('ui:overlay', { id: 'map', open: false });
   }
 
   updateReachedStatus() {
@@ -56,20 +60,16 @@ export class WorldMap {
     const legOrder = ['leg0', 'leg1', 'leg2', 'leg3', 'leg4', 'leg5', 'leg6', 'leg7', 'leg8', 'leg9', 'leg10', 'completed'];
     const curIdx = legOrder.indexOf(leg) !== -1 ? legOrder.indexOf(leg) : 0;
 
-    this.waypoints.forEach(wp => {
-      if (wp.id === 'london' || wp.id === 'paris') wp.reached = true;
-      if (wp.id === 'suez' && curIdx >= 2) wp.reached = true;
-      if (wp.id === 'bombay' && curIdx >= 3) wp.reached = true;
-      if (wp.id === 'calcutta' && curIdx >= 4) wp.reached = true;
-      if (wp.id === 'hongkong' && curIdx >= 5) wp.reached = true;
-      if (wp.id === 'yokohama' && curIdx >= 6) wp.reached = true;
-      if (wp.id === 'sanfrancisco' && curIdx >= 7) wp.reached = true;
-      if (wp.id === 'newyork' && curIdx >= 8) wp.reached = true;
-      if (wp.id === 'london_end' && curIdx >= 10) wp.reached = true;
-    });
+    const thresholds = { london: 0, paris: 2, suez: 2, bombay: 3, calcutta: 4,
+      hongkong: 5, yokohama: 6, sanfrancisco: 8, newyork: 9, london_end: 11 };
+    this.waypoints.forEach(wp => { wp.reached = curIdx >= thresholds[wp.id]; });
+    const footer = document.getElementById('map-footer-info');
+    const journey = getJourneyStatus(gameState.get());
+    if (footer) footer.textContent = `${journey.pace} · 已完成 ${journey.completed}/11 段 · ${leg === 'completed' ? '环球旅程已归档' : `下一站：${journey.nextCity}`}`;
   }
 
   startAnimation() {
+    if (this.animReq) cancelAnimationFrame(this.animReq);
     const loop = () => {
       this.animOffset = (this.animOffset + 0.5) % 30;
       this.drawMap();

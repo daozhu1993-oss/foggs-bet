@@ -12,6 +12,8 @@ export class MiniGame {
     this.running = false;
     this.paused = false;
     this.onComplete = null; // 由主线注入的回调函数 (result) => {}
+    this.destroyed = false;
+    this.completed = false;
   }
 
   // 初始化（资源准备、实体生成）
@@ -37,15 +39,24 @@ export class MiniGame {
   // 恢复
   resume() {
     this.paused = false;
+    if (this.pendingResult) {
+      const result = this.pendingResult;
+      this.pendingResult = null;
+      this.complete(result);
+    }
   }
 
   // 销毁并清理监听
   destroy() {
+    this.destroyed = true;
     this.running = false;
   }
 
   // 结束本关小游戏并提交结果
   complete(result) {
+    if (this.destroyed || this.completed) return;
+    if (this.paused) { this.pendingResult = result; return; }
+    this.completed = true;
     this.running = false;
     if (typeof this.onComplete === 'function') {
       this.onComplete(result);
