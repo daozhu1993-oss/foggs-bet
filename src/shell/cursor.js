@@ -66,15 +66,18 @@ export class VictorianCursor {
     this.isVisible = false;
     if (this.cursorEl) this.cursorEl.style.opacity = '0';
     if (this.followerEl) this.followerEl.style.opacity = '0';
+    this.stopLoop();
   }
 
   onMouseEnter() {
     this.isVisible = true;
     if (this.cursorEl) this.cursorEl.style.opacity = '1';
     if (this.followerEl) this.followerEl.style.opacity = '1';
+    this.startLoop();
   }
 
   startLoop() {
+    if (this.animId) return;
     const loop = () => {
       if (this.isVisible && this.cursorEl && this.followerEl) {
         // 光标中心点实时响应
@@ -84,9 +87,18 @@ export class VictorianCursor {
         this.follower.x += (this.mouse.x - this.follower.x) * 0.2;
         this.follower.y += (this.mouse.y - this.follower.y) * 0.2;
         this.followerEl.style.transform = `translate3d(${this.follower.x}px, ${this.follower.y}px, 0) translate(-50%, -50%)`;
+        this.animId = requestAnimationFrame(loop);
+      } else {
+        this.animId = null;
       }
-      this.animId = requestAnimationFrame(loop);
     };
     this.animId = requestAnimationFrame(loop);
+  }
+
+  stopLoop() {
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+      this.animId = null;
+    }
   }
 }

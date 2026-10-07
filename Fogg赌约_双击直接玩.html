@@ -4850,12 +4850,9 @@ class ParticleSystem {
   }
 
   update(dt = 1/60) {
-    if (this.motesEnabled) {
-      let moteCount = 0;
-      for (let i = 0; i < this.particles.length; i++) {
-        if (this.particles[i].type === 'mote') moteCount++;
-      }
-      while (moteCount < 26) {
+    if (this.motesEnabled && !this.motesInitialized) {
+      this.motesInitialized = true;
+      for (let i = 0; i < 26; i++) {
         this.particles.push({
           type: 'mote',
           x: Math.random() * 1280,
@@ -4867,7 +4864,6 @@ class ParticleSystem {
           decay: 0.001,
           color: Math.random() > 0.4 ? 'rgba(255, 235, 170, ' : 'rgba(212, 175, 55, '
         });
-        moteCount++;
       }
     }
 
@@ -10550,15 +10546,18 @@ class VictorianCursor {
     this.isVisible = false;
     if (this.cursorEl) this.cursorEl.style.opacity = '0';
     if (this.followerEl) this.followerEl.style.opacity = '0';
+    this.stopLoop();
   }
 
   onMouseEnter() {
     this.isVisible = true;
     if (this.cursorEl) this.cursorEl.style.opacity = '1';
     if (this.followerEl) this.followerEl.style.opacity = '1';
+    this.startLoop();
   }
 
   startLoop() {
+    if (this.animId) return;
     const loop = () => {
       if (this.isVisible && this.cursorEl && this.followerEl) {
         // 光标中心点实时响应
@@ -10568,10 +10567,19 @@ class VictorianCursor {
         this.follower.x += (this.mouse.x - this.follower.x) * 0.2;
         this.follower.y += (this.mouse.y - this.follower.y) * 0.2;
         this.followerEl.style.transform = `translate3d(${this.follower.x}px, ${this.follower.y}px, 0) translate(-50%, -50%)`;
+        this.animId = requestAnimationFrame(loop);
+      } else {
+        this.animId = null;
       }
-      this.animId = requestAnimationFrame(loop);
     };
     this.animId = requestAnimationFrame(loop);
+  }
+
+  stopLoop() {
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+      this.animId = null;
+    }
   }
 }
 

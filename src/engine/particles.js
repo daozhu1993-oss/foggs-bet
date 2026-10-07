@@ -159,12 +159,9 @@ export class ParticleSystem {
   }
 
   update(dt = 1/60) {
-    if (this.motesEnabled) {
-      let moteCount = 0;
-      for (let i = 0; i < this.particles.length; i++) {
-        if (this.particles[i].type === 'mote') moteCount++;
-      }
-      while (moteCount < 26) {
+    if (this.motesEnabled && !this.motesInitialized) {
+      this.motesInitialized = true;
+      for (let i = 0; i < 26; i++) {
         this.particles.push({
           type: 'mote',
           x: Math.random() * 1280,
@@ -176,7 +173,6 @@ export class ParticleSystem {
           decay: 0.001,
           color: Math.random() > 0.4 ? 'rgba(255, 235, 170, ' : 'rgba(212, 175, 55, '
         });
-        moteCount++;
       }
     }
 
