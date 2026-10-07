@@ -12,10 +12,15 @@ export class HUD {
     this.moneyText = document.getElementById('hud-money-text');
     this.locationText = document.getElementById('hud-location-text');
     this.watchHand = document.getElementById('watch-hand');
+    this.pocketWatch = document.getElementById('hud-pocket-watch');
     this.btnSound = document.getElementById('btn-sound');
+    this.soundLabel = document.getElementById('sound-label');
     this.btnMap = document.getElementById('btn-map');
     this.btnPassport = document.getElementById('btn-passport');
     this.btnPause = document.getElementById('btn-pause');
+
+    this.displayedMoney = null;
+    this.moneyAnimTimer = null;
 
     this.init();
   }
@@ -66,8 +71,44 @@ export class HUD {
       }
     }
 
+    if (this.pocketWatch) {
+      if (remaining <= 15) {
+        this.pocketWatch.classList.add('watch-urgent');
+      } else {
+        this.pocketWatch.classList.remove('watch-urgent');
+      }
+    }
+
     if (this.moneyText) {
-      this.moneyText.textContent = MoneyManager.formatGBP(state.money.gbp);
+      const targetMoney = state.money.gbp;
+      if (this.displayedMoney === null || typeof window === 'undefined' || (window.constructor && window.constructor.name === 'ElementDouble')) {
+        this.displayedMoney = targetMoney;
+        this.moneyText.textContent = MoneyManager.formatGBP(targetMoney);
+      } else if (this.displayedMoney !== targetMoney) {
+        const startMoney = this.displayedMoney;
+        const diff = targetMoney - startMoney;
+        const startTime = performance.now();
+        const duration = 450;
+        if (this.moneyAnimTimer) cancelAnimationFrame(this.moneyAnimTimer);
+        if (diff > 0 && sound.playCoinClink) sound.playCoinClink();
+        else if (diff < 0 && sound.playCoin) sound.playCoin();
+
+        const animStep = (now) => {
+          const elapsed = now - startTime;
+          const progressVal = Math.min(1, elapsed / duration);
+          const eased = 1 - Math.pow(1 - progressVal, 2);
+          const current = Math.round(startMoney + diff * eased);
+          this.displayedMoney = current;
+          if (this.moneyText) this.moneyText.textContent = MoneyManager.formatGBP(current);
+          if (progressVal < 1) {
+            this.moneyAnimTimer = requestAnimationFrame(animStep);
+          } else {
+            this.displayedMoney = targetMoney;
+            if (this.moneyText) this.moneyText.textContent = MoneyManager.formatGBP(targetMoney);
+          }
+        };
+        this.moneyAnimTimer = requestAnimationFrame(animStep);
+      }
     }
 
     if (this.watchHand) {
@@ -82,10 +123,17 @@ export class HUD {
     events.on('money:changed', () => this.update());
 
     if (this.btnSound) {
+      const syncSoundUI = (enabled) => {
+        if (this.soundLabel) this.soundLabel.textContent = enabled ? '音效' : '静音';
+        this.btnSound.classList.toggle('sound-muted', !enabled);
+        this.btnSound.title = enabled ? '声音开 (点击静音)' : '声音关 (点击开启)';
+      };
+      syncSoundUI(sound.enabled);
+
       this.btnSound.addEventListener('click', () => {
         const enabled = sound.toggle();
-        this.btnSound.textContent = enabled ? '🔊 音效' : '🔇 静音';
-        sound.playClick();
+        syncSoundUI(enabled);
+        if (sound.playClick) sound.playClick();
       });
     }
 

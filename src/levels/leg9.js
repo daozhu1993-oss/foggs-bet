@@ -4,8 +4,10 @@ import { resolveLeg } from '../core/resolve.js';
 import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg9({ gameRunner, hud }) {
+  await IntertitleCard.show(9);
   hud.setLocation('大西洋 ➔ 英国利物浦港');
   hud.show();
 

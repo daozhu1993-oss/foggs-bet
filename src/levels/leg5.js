@@ -5,8 +5,10 @@ import { resultCard } from '../shell/resultCard.js';
 import { decisionModal } from '../shell/decisionModal.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg5({ gameRunner, hud }) {
+  await IntertitleCard.show(5);
   hud.setLocation('香港 → 上海外海 → 横滨');
   hud.show();
   sceneBackdrop?.setBackdrop('hongkong');

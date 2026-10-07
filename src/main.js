@@ -19,6 +19,7 @@ import { events } from './core/events.js';
 import { CHALLENGE_GUIDES } from './core/journey.js';
 import { initBackdrop } from './engine/backdrop.js';
 import { TacticalBriefing } from './shell/briefing.js';
+import { VictorianCursor } from './shell/cursor.js';
 import { runLeg0 } from './levels/leg0.js';
 import { runLeg1 } from './levels/leg1.js';
 import { runLeg2 } from './levels/leg2.js';
@@ -39,6 +40,7 @@ class GameApp {
     this.fxCanvas = document.getElementById('fx-canvas');
     this.fxCtx = this.fxCanvas.getContext('2d');
     this.orientation = new OrientationAdapter();
+    this.cursor = new VictorianCursor();
     this.input = new InputManager(this.container, this.gameCanvas);
     this.hud = new HUD();
     this.map = new WorldMap();
@@ -138,7 +140,18 @@ class GameApp {
       if (!this.pauseModal.classList.contains('hidden')) this.resumePlay();
       else this.showPause();
     });
-    events.on('ui:overlay', ({ id, open }) => this.setPauseReason(id, open));
+    events.on('ui:overlay', ({ id, open }) => {
+      this.setPauseReason(id, open);
+      if (open && sound && sound.playLatchClick) sound.playLatchClick();
+    });
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('pointerenter', (e) => {
+        const target = e.target && e.target.closest && e.target.closest('button, .hud-btn, .arcade-card, .stamp-slot, .decision-opt-btn, .start-btn');
+        if (target && sound && sound.playHover) {
+          sound.playHover();
+        }
+      }, true);
+    }
     events.on('game:portrait', () => {
       if (this.activeMiniGame) this.showPause('竖屏时已暂停。把手机横过来，再继续这一程。');
     });

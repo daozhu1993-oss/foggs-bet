@@ -1461,9 +1461,338 @@ button:focus-visible { outline: 3px solid #c89631; outline-offset: 4px; }
   display: none !important;
 }
 
+/* ========================================================
+   1. 维多利亚高精罗盘光标 (Victorian Precision Compass Cursor)
+   仅在精细指针且支持 hover 的桌面端开启，移动触控完全跳过
+   ======================================================== */
+@media (hover: hover) and (pointer: fine) {
+  body {
+    cursor: default;
+  }
+
+  .custom-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    background: #d4af37;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity 0.2s ease, width 0.2s ease, height 0.2s ease, background-color 0.2s ease;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.85);
+    will-change: transform;
+  }
+
+  .cursor-follower {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid rgba(212, 175, 55, 0.65);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99998;
+    opacity: 0;
+    transition: opacity 0.25s ease, width 0.25s ease, height 0.25s ease, border-color 0.25s ease, transform 0.05s linear;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2), inset 0 0 6px rgba(212, 175, 55, 0.1);
+    will-change: transform;
+  }
+
+  /* 悬停交互元素时吸附放大并变换罗盘光圈 */
+  body.cursor-hover .custom-cursor {
+    width: 6px;
+    height: 6px;
+    background: #f7e2a9;
+    box-shadow: 0 0 12px rgba(247, 226, 169, 1);
+  }
+
+  body.cursor-hover .cursor-follower {
+    width: 44px;
+    height: 44px;
+    border-color: rgba(247, 226, 169, 0.9);
+    border-width: 2px;
+    background: rgba(212, 175, 55, 0.08);
+    box-shadow: 0 0 16px rgba(212, 175, 55, 0.4), inset 0 0 10px rgba(212, 175, 55, 0.2);
+  }
+
+  /* 鼠标按下反馈 */
+  body.cursor-click .custom-cursor {
+    transform: translate(-50%, -50%) scale(1.4);
+    background: #ffffff;
+  }
+
+  body.cursor-click .cursor-follower {
+    transform: translate(-50%, -50%) scale(0.85);
+    border-color: #f7e2a9;
+    background: rgba(247, 226, 169, 0.25);
+  }
+}
+
+@media (pointer: coarse) {
+  .custom-cursor, .cursor-follower {
+    display: none !important;
+  }
+}
+
+/* ========================================================
+   2. 电影级维多利亚章回幕间题头卡 (Cinematic Chapter Intertitle Cards)
+   ======================================================== */
+.intertitle-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(14, 18, 25, 0.94) 0%, rgba(5, 7, 10, 0.98) 100%);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intertitle-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intertitle-card {
+  position: relative;
+  width: min(720px, 90vw);
+  max-height: 88vh;
+  padding: 44px 36px 36px;
+  background: #111622;
+  border: 2px solid #ad8648;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #463417, 0 28px 80px rgba(0, 0, 0, 0.85), inset 0 0 80px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  color: #eedcc0;
+  animation: intertitleCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow-y: auto;
+}
+
+@keyframes intertitleCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 维多利亚古典四角花角 */
+.intertitle-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #d4af37;
+  border-style: solid;
+  pointer-events: none;
+}
+.intertitle-corner.top-left {
+  top: 8px; left: 8px;
+  border-width: 2px 0 0 2px;
+}
+.intertitle-corner.top-right {
+  top: 8px; right: 8px;
+  border-width: 2px 2px 0 0;
+}
+.intertitle-corner.bottom-left {
+  bottom: 8px; left: 8px;
+  border-width: 0 0 2px 2px;
+}
+.intertitle-corner.bottom-right {
+  bottom: 8px; right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+.intertitle-ornament-top,
+.intertitle-ornament-bottom {
+  font-size: 14px;
+  letter-spacing: 6px;
+  color: #ad8648;
+  margin: 4px 0 12px;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.intertitle-act {
+  font-family: 'Cinzel Decorative', 'Cinzel', 'Georgia', serif;
+  font-size: 15px;
+  letter-spacing: 5px;
+  color: #c99b42;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.intertitle-title {
+  font-family: 'Cinzel', 'Georgia', 'Songti SC', serif;
+  font-size: clamp(24px, 4vw, 34px);
+  color: #f7e6c4;
+  margin: 0 0 16px;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.intertitle-line {
+  width: 140px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  margin: 0 auto 20px;
+}
+
+.intertitle-quote {
+  font-family: 'Georgia', 'Songti SC', serif;
+  font-style: italic;
+  font-size: clamp(15px, 2.2vw, 18px);
+  line-height: 1.8;
+  color: #d8c4a0;
+  max-width: 580px;
+  margin: 0 auto 24px;
+  padding: 0 16px;
+}
+
+.intertitle-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.stat-pill {
+  padding: 8px 16px;
+  background: rgba(28, 36, 50, 0.7);
+  border: 1px solid rgba(173, 134, 72, 0.4);
+  border-radius: 20px;
+  font-size: 13px;
+  color: #e2ceaa;
+  letter-spacing: 0.5px;
+}
+
+.intertitle-btn {
+  padding: 12px 36px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.intertitle-prompt {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #8f7956;
+  letter-spacing: 1px;
+}
+
+/* ========================================================
+   3. HUD 声景波动器 (HUD Audio Wave Visualizer)
+   ======================================================== */
+.sound-wave-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.sound-wave-bars .bar {
+  width: 3px;
+  background: #d4af37;
+  border-radius: 1.5px;
+  transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.sound-wave-bars .bar-1 { height: 6px; animation: soundBarWave 1s ease-in-out infinite alternate; }
+.sound-wave-bars .bar-2 { height: 12px; animation: soundBarWave 1.2s ease-in-out 0.2s infinite alternate; }
+.sound-wave-bars .bar-3 { height: 8px; animation: soundBarWave 0.9s ease-in-out 0.4s infinite alternate; }
+
+@keyframes soundBarWave {
+  0% { height: 4px; }
+  100% { height: 14px; }
+}
+
+.sound-muted .sound-wave-bars .bar {
+  animation: none !important;
+  height: 3px !important;
+  opacity: 0.4;
+  background: #888;
+}
+
+/* ========================================================
+   4. 金箔流光与奢华质感 (Awwwards Gilded Shimmer & Urgency)
+   ======================================================== */
+.shimmer-gold {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-gold::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 20%,
+    rgba(255, 235, 170, 0.25) 50%,
+    transparent 80%
+  );
+  transform: rotate(25deg) translateY(-100%);
+  animation: goldShimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes goldShimmer {
+  0%, 70% {
+    transform: rotate(25deg) translateY(-100%);
+  }
+  100% {
+    transform: rotate(25deg) translateY(100%);
+  }
+}
+
+/* 怀表紧急状态脉冲 (Chronometer Urgency Pulse) */
+.watch-urgent {
+  animation: urgentWatchPulse 1.4s ease-in-out infinite !important;
+  box-shadow: 0 0 16px rgba(220, 60, 40, 0.7), inset 0 0 12px rgba(220, 60, 40, 0.4) !important;
+  border-color: #d64232 !important;
+}
+
+@keyframes urgentWatchPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(220, 60, 40, 0.5), inset 0 0 8px rgba(220, 60, 40, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(220, 60, 40, 0.9), inset 0 0 16px rgba(220, 60, 40, 0.6);
+  }
+}
+
+/* 护照钢印微交互 */
+.stamp-slot {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.stamp-slot:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+
 </style>
 </head>
 <body>
+  <!-- 维多利亚定制高精罗盘光标 (仅桌面端精细指针生效) -->
+  <div id="custom-cursor" class="custom-cursor" aria-hidden="true"></div>
+  <div id="cursor-follower" class="cursor-follower" aria-hidden="true"></div>
+
   <!-- 竖屏强制提示遮罩 -->
   <div id="orientation-guard" class="orientation-guard hidden">
     <div class="guard-content">
@@ -1517,7 +1846,9 @@ button:focus-visible { outline: 3px solid #c89631; outline-offset: 4px; }
           <button id="btn-map" class="hud-btn" title="查看航线地图">🗺️ 航线</button>
           <button id="btn-passport" class="hud-btn" title="查看护照钢印">📜 护照</button>
           <button id="btn-arcade-hud" class="hud-btn hidden" title="游乐场自由挑战">🎪 游乐场</button>
-          <button id="btn-sound" class="hud-btn" title="声音开关">🔊 音效</button>
+          <button id="btn-sound" class="hud-btn" title="声音开关">
+            <span class="sound-wave-bars" aria-hidden="true"><span class="bar bar-1"></span><span class="bar bar-2"></span><span class="bar bar-3"></span></span><span id="sound-label">音效</span>
+          </button>
           <button id="btn-pause" class="hud-btn" title="暂停游戏" aria-label="暂停游戏" aria-pressed="false">⏸️</button>
         </div>
       </header>
@@ -1888,7 +2219,9 @@ button:focus-visible { outline: 3px solid #c89631; outline-offset: 4px; }
             <button id="btn-restart-game" class="danger-btn">🔄 重新开始探险</button>
           </div>
         </div>
-      </div>
+
+      <!-- 维多利亚章回幕间题头幕 -->
+      <div id="intertitle-overlay" class="intertitle-overlay hidden" role="dialog" aria-modal="true"></div>
 
       <!-- 标题封面主菜单 -->
       <div id="title-screen" class="title-screen">
@@ -4029,6 +4362,60 @@ class SoundEngine {
     osc.stop(now + 0.03);
   }
 
+  // 微机械悬停齿轮轻响 (Micro Gear Hover Tick)
+  playHover() {
+    if (!this.enabled || this.paused) return;
+    this.resume();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1600, now);
+    osc.frequency.exponentialRampToValueAtTime(2200, now + 0.015);
+    gain.gain.setValueAtTime(0.025, now);
+    gain.gain.exponentialRampToValueAtTime(0.0005, now + 0.02);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.025);
+  }
+
+  // 怀表机括弹片咬合声 (Brass Latch Click)
+  playLatchClick() {
+    if (!this.enabled || this.paused) return;
+    this.resume();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1100, now);
+    osc.frequency.exponentialRampToValueAtTime(350, now + 0.04);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.06);
+  }
+
+  // 羊皮纸展开摩擦脆响 (Parchment Rustle)
+  playParchmentRustle() {
+    if (!this.enabled || this.paused) return;
+    this.resume();
+    if (!this.ctx) return;
+    this.playCardFlip();
+  }
+
   // 经典太鼓达人打击乐物理建模 (咚 Dong / 咔 Ka / 大咚 DON)
   playRhythmHit(type = 'left') {
     if (!this.enabled || this.paused) return;
@@ -4307,6 +4694,7 @@ class ParticleSystem {
     this.canvas = canvas;
     this.ctx = canvas ? canvas.getContext('2d') : null;
     this.particles = [];
+    this.motesEnabled = true;
   }
 
   setCanvas(canvas) {
@@ -4461,11 +4849,44 @@ class ParticleSystem {
   }
 
   update(dt = 1/60) {
+    if (this.motesEnabled) {
+      let moteCount = 0;
+      for (let i = 0; i < this.particles.length; i++) {
+        if (this.particles[i].type === 'mote') moteCount++;
+      }
+      while (moteCount < 26) {
+        this.particles.push({
+          type: 'mote',
+          x: Math.random() * 1280,
+          y: Math.random() * 720,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -Math.random() * 0.4 - 0.15,
+          radius: Math.random() * 1.8 + 0.8,
+          alpha: Math.random() * 0.35 + 0.12,
+          decay: 0.001,
+          color: Math.random() > 0.4 ? 'rgba(255, 235, 170, ' : 'rgba(212, 175, 55, '
+        });
+        moteCount++;
+      }
+    }
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
       p.y += p.vy;
       p.alpha -= p.decay;
+
+      if (p.type === 'mote') {
+        if (p.y < -10) {
+          p.y = 730;
+          p.x = Math.random() * 1280;
+          p.alpha = Math.random() * 0.35 + 0.12;
+        }
+        if (p.alpha <= 0.02) {
+          p.alpha = Math.random() * 0.35 + 0.12;
+        }
+        continue;
+      }
 
       if (p.type === 'steam') {
         p.radius += (p.maxRadius - p.radius) * 0.05;
@@ -4494,6 +4915,11 @@ class ParticleSystem {
 
       if (p.type === 'steam' || p.type === 'dust' || p.type === 'spark') {
         ctx.fillStyle = `${p.color}${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'mote') {
+        ctx.fillStyle = `${p.color}1)`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
@@ -10054,6 +10480,266 @@ class OrientationAdapter {
 }
 
 
+/* ==================== src/shell/cursor.js ==================== */
+// 维多利亚古典航海定制光标 (仅桌面精细指针激活，移动端完全原生无干扰)
+class VictorianCursor {
+  constructor() {
+    this.cursorEl = document.getElementById('custom-cursor');
+    this.followerEl = document.getElementById('cursor-follower');
+    if (!this.cursorEl || !this.followerEl) return;
+
+    this.mouse = { x: -100, y: -100 };
+    this.follower = { x: -100, y: -100 };
+    this.isVisible = false;
+    this.isHovering = false;
+    this.animId = null;
+
+    this.init();
+  }
+
+  init() {
+    // 触控设备或不支持 hover 时直接跳过，保持纯原生触控
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return;
+
+    window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    window.addEventListener('mousedown', () => this.onMouseDown());
+    window.addEventListener('mouseup', () => this.onMouseUp());
+    document.addEventListener('mouseleave', () => this.onMouseLeave());
+    document.addEventListener('mouseenter', () => this.onMouseEnter());
+
+    // 监听可交互元素悬停
+    document.addEventListener('mouseover', (e) => {
+      const target = e.target && e.target.closest && e.target.closest('button, a, .arcade-card, .stamp-slot, [role="button"], input, .hud-btn, .action-btn, .decision-opt-btn, .start-btn');
+      if (target) {
+        this.isHovering = true;
+        document.body.classList.add('cursor-hover');
+      }
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      const target = e.target && e.target.closest && e.target.closest('button, a, .arcade-card, .stamp-slot, [role="button"], input, .hud-btn, .action-btn, .decision-opt-btn, .start-btn');
+      if (target) {
+        this.isHovering = false;
+        document.body.classList.remove('cursor-hover');
+      }
+    });
+
+    this.startLoop();
+  }
+
+  onMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+    if (!this.isVisible) {
+      this.isVisible = true;
+      if (this.cursorEl) this.cursorEl.style.opacity = '1';
+      if (this.followerEl) this.followerEl.style.opacity = '1';
+    }
+  }
+
+  onMouseDown() {
+    document.body.classList.add('cursor-click');
+  }
+
+  onMouseUp() {
+    document.body.classList.remove('cursor-click');
+  }
+
+  onMouseLeave() {
+    this.isVisible = false;
+    if (this.cursorEl) this.cursorEl.style.opacity = '0';
+    if (this.followerEl) this.followerEl.style.opacity = '0';
+  }
+
+  onMouseEnter() {
+    this.isVisible = true;
+    if (this.cursorEl) this.cursorEl.style.opacity = '1';
+    if (this.followerEl) this.followerEl.style.opacity = '1';
+  }
+
+  startLoop() {
+    const loop = () => {
+      if (this.isVisible && this.cursorEl && this.followerEl) {
+        // 光标中心点实时响应
+        this.cursorEl.style.transform = `translate3d(${this.mouse.x}px, ${this.mouse.y}px, 0) translate(-50%, -50%)`;
+
+        // 外环弹簧追随 (Lerp 插值)
+        this.follower.x += (this.mouse.x - this.follower.x) * 0.2;
+        this.follower.y += (this.mouse.y - this.follower.y) * 0.2;
+        this.followerEl.style.transform = `translate3d(${this.follower.x}px, ${this.follower.y}px, 0) translate(-50%, -50%)`;
+      }
+      this.animId = requestAnimationFrame(loop);
+    };
+    this.animId = requestAnimationFrame(loop);
+  }
+}
+
+
+/* ==================== src/shell/intertitle.js ==================== */
+// 电影级维多利亚章回幕间题头幕 (Cinematic Chapter Intertitle Cards)
+const ACT_INTERTITLES = [
+  {
+    act: 'PROLOGUE',
+    title: '改良俱乐部之赌',
+    quote: '「一位真正的英国绅士，从不对他的诺言打半点折扣。」',
+    route: '伦敦出发 ➔ 环球一周',
+    transport: '蒸汽火车与邮轮'
+  },
+  {
+    act: 'ACT I',
+    title: '多佛海峡 · 狂奔赶船',
+    quote: '「不可预见的事物根本不存在；世界只要经由精准计算，便遵循它的轨道。」',
+    route: '伦敦 ➔ 巴黎 ➔ 多佛',
+    transport: '港口快运'
+  },
+  {
+    act: 'ACT II',
+    title: '蒙古号 · 纵贯红海风暴',
+    quote: '「蒸汽活塞的每一次往复冲程，都在把古老的陆地甩在身后。」',
+    route: '苏伊士 ➔ 红海 ➔ 孟买',
+    transport: 'P&O 皇家邮轮'
+  },
+  {
+    act: 'ACT III',
+    title: '印度古雨林 · 圣火与大象',
+    quote: '「拯救一个无辜而鲜活的生命，值得赌上八十天的赌约与两万英镑。」',
+    route: '柯尔比 ➔ 萨蒂火祭神庙',
+    transport: '战象奇阿尼'
+  },
+  {
+    act: 'ACT IV',
+    title: '加尔各答 · 孟加拉公堂智斗',
+    quote: '「两千英镑可以买下保释自由，但买不回被时光扣留的分秒。」',
+    route: '恒河平原 ➔ 加尔各答港',
+    transport: '半岛铁路'
+  },
+  {
+    act: 'ACT V',
+    title: '坦克德尔号 · 南海搏击惊涛',
+    quote: '「顺风是朋友，逆风是砥砺。只要航船不沉，暴风雨就得向我们让路。」',
+    route: '香港 ➔ 台湾海峡 ➔ 上海外海',
+    transport: '领港双桅帆船'
+  },
+  {
+    act: 'ACT VI',
+    title: '横滨 · 长鼻天狗相认',
+    quote: '「纵使穿越万里重洋，至诚之友总能在熙攘人潮中彼此相逢。」',
+    route: '横滨港 ➔ 江户马戏团',
+    transport: '人力马车与步履'
+  },
+  {
+    act: 'ACT VII',
+    title: '旧金山 · 淘金狂乱与选战突围',
+    quote: '「文明的礼帽偶遇蛮荒的火枪，绅士的坚毅便成了最好的盾甲。」',
+    route: '旧金山 ➔ 太平洋铁路',
+    transport: '横贯大陆机车'
+  },
+  {
+    act: 'ACT VIII',
+    title: '落基雪峡与风帆雪橇',
+    quote: '「百迈飞驰断桥，雪橇顺风极行。横贯大陆的狂澜，无人能挡。」',
+    route: '落基山断桥 ➔ 内布拉斯加 ➔ 纽约',
+    transport: '风帆雪橇与飞车'
+  },
+  {
+    act: 'ACT IX',
+    title: '亨丽埃塔号 · 怒海拆船大燃烧',
+    quote: '「烧掉木舱！烧掉甲板！只要引擎还在怒吼，大西洋也得臣服脚下！」',
+    route: '纽约港 ➔ 大西洋 ➔ 利物浦',
+    transport: '超频商船'
+  },
+  {
+    act: 'ACT X',
+    title: '终局 · 伦敦最后二十四小时',
+    quote: '「向东而行的人，比太阳更快。八十天环球，他赢得了整个世界与挚爱。」',
+    route: '利物浦 ➔ 伦敦改良俱乐部',
+    transport: '疾速双轮双座马车'
+  }
+];
+class IntertitleCard {
+  static show(actIndex) {
+    // 单元测试与无头双倍环境快速放行
+    if (typeof window !== 'undefined' && window.constructor && window.constructor.name === 'ElementDouble') {
+      return Promise.resolve();
+    }
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_TEST_CONTEXT) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      const data = ACT_INTERTITLES[actIndex] || ACT_INTERTITLES[0];
+      const state = gameState.get ? gameState.get() : { money: { gbp: 20000 } };
+      const remaining = gameState.getRemainingDays ? gameState.getRemainingDays() : 80;
+      const journey = getJourneyStatus ? getJourneyStatus(state) : { pace: '持平' };
+
+      let modal = document.getElementById('intertitle-overlay');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'intertitle-overlay';
+        modal.className = 'intertitle-overlay hidden';
+        const container = document.getElementById('game-container') || document.body;
+        if (container) container.appendChild(modal);
+      }
+
+      modal.innerHTML = `
+        <div class="intertitle-card">
+          <div class="intertitle-corner top-left"></div>
+          <div class="intertitle-corner top-right"></div>
+          <div class="intertitle-corner bottom-left"></div>
+          <div class="intertitle-corner bottom-right"></div>
+
+          <div class="intertitle-ornament-top">✦ ❖ ✦</div>
+          <div class="intertitle-act">${data.act}</div>
+          <h2 class="intertitle-title">${data.title}</h2>
+          <div class="intertitle-line"></div>
+          <p class="intertitle-quote">${data.quote}</p>
+          <div class="intertitle-stats">
+            <div class="stat-pill">📍 航段：${data.route}</div>
+            <div class="stat-pill">⏳ 剩余：${remaining.toFixed(1)} 天 (${journey.pace})</div>
+            <div class="stat-pill">💰 本票：£${state.money.gbp.toLocaleString()}</div>
+          </div>
+          <div class="intertitle-ornament-bottom">✦ ❖ ✦</div>
+          <button id="btn-intertitle-proceed" class="gold-btn intertitle-btn">启程此程 ➔</button>
+          <div class="intertitle-prompt">点击任意处或按空格启程</div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+      if (sound && sound.playBigBen) sound.playBigBen();
+      if (sound && sound.playCardFlip) sound.playCardFlip();
+
+      const btn = modal.querySelector('#btn-intertitle-proceed');
+      if (btn && btn.focus) btn.focus({ preventScroll: true });
+
+      let closed = false;
+      const close = () => {
+        if (closed) return;
+        closed = true;
+        if (sound && sound.playClick) sound.playClick();
+        modal.classList.add('fade-out');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+          modal.classList.remove('fade-out');
+          resolve();
+        }, 320);
+      };
+
+      if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); close(); });
+      modal.addEventListener('click', close);
+
+      const onKey = (e) => {
+        if (['Space', 'Enter'].includes(e.code)) {
+          e.preventDefault();
+          window.removeEventListener('keydown', onKey);
+          close();
+        }
+      };
+      window.addEventListener('keydown', onKey);
+    });
+  }
+}
+
+
 /* ==================== src/shell/briefing.js ==================== */
 class TacticalBriefing {
   static show({ title, subtitle, goal, tip, controls = [] }) {
@@ -10123,10 +10809,15 @@ class HUD {
     this.moneyText = document.getElementById('hud-money-text');
     this.locationText = document.getElementById('hud-location-text');
     this.watchHand = document.getElementById('watch-hand');
+    this.pocketWatch = document.getElementById('hud-pocket-watch');
     this.btnSound = document.getElementById('btn-sound');
+    this.soundLabel = document.getElementById('sound-label');
     this.btnMap = document.getElementById('btn-map');
     this.btnPassport = document.getElementById('btn-passport');
     this.btnPause = document.getElementById('btn-pause');
+
+    this.displayedMoney = null;
+    this.moneyAnimTimer = null;
 
     this.init();
   }
@@ -10177,8 +10868,44 @@ class HUD {
       }
     }
 
+    if (this.pocketWatch) {
+      if (remaining <= 15) {
+        this.pocketWatch.classList.add('watch-urgent');
+      } else {
+        this.pocketWatch.classList.remove('watch-urgent');
+      }
+    }
+
     if (this.moneyText) {
-      this.moneyText.textContent = MoneyManager.formatGBP(state.money.gbp);
+      const targetMoney = state.money.gbp;
+      if (this.displayedMoney === null || typeof window === 'undefined' || (window.constructor && window.constructor.name === 'ElementDouble')) {
+        this.displayedMoney = targetMoney;
+        this.moneyText.textContent = MoneyManager.formatGBP(targetMoney);
+      } else if (this.displayedMoney !== targetMoney) {
+        const startMoney = this.displayedMoney;
+        const diff = targetMoney - startMoney;
+        const startTime = performance.now();
+        const duration = 450;
+        if (this.moneyAnimTimer) cancelAnimationFrame(this.moneyAnimTimer);
+        if (diff > 0 && sound.playCoinClink) sound.playCoinClink();
+        else if (diff < 0 && sound.playCoin) sound.playCoin();
+
+        const animStep = (now) => {
+          const elapsed = now - startTime;
+          const progressVal = Math.min(1, elapsed / duration);
+          const eased = 1 - Math.pow(1 - progressVal, 2);
+          const current = Math.round(startMoney + diff * eased);
+          this.displayedMoney = current;
+          if (this.moneyText) this.moneyText.textContent = MoneyManager.formatGBP(current);
+          if (progressVal < 1) {
+            this.moneyAnimTimer = requestAnimationFrame(animStep);
+          } else {
+            this.displayedMoney = targetMoney;
+            if (this.moneyText) this.moneyText.textContent = MoneyManager.formatGBP(targetMoney);
+          }
+        };
+        this.moneyAnimTimer = requestAnimationFrame(animStep);
+      }
     }
 
     if (this.watchHand) {
@@ -10193,10 +10920,17 @@ class HUD {
     events.on('money:changed', () => this.update());
 
     if (this.btnSound) {
+      const syncSoundUI = (enabled) => {
+        if (this.soundLabel) this.soundLabel.textContent = enabled ? '音效' : '静音';
+        this.btnSound.classList.toggle('sound-muted', !enabled);
+        this.btnSound.title = enabled ? '声音开 (点击静音)' : '声音关 (点击开启)';
+      };
+      syncSoundUI(sound.enabled);
+
       this.btnSound.addEventListener('click', () => {
         const enabled = sound.toggle();
-        this.btnSound.textContent = enabled ? '🔊 音效' : '🔇 静音';
-        sound.playClick();
+        syncSoundUI(enabled);
+        if (sound.playClick) sound.playClick();
       });
     }
 
@@ -10609,23 +11343,151 @@ class WorldMap {
       ctx.restore();
     });
 
-    // 4. 绘制当前载具（船/火车）
-    let currentWP = this.waypoints[0];
+    // 4. 绘制航行中巡航载具（平滑巡航与水波呼吸）
+    let currentIdx = 0;
     for (let i = this.waypoints.length - 1; i >= 0; i--) {
       if (this.waypoints[i].reached) {
-        currentWP = this.waypoints[i];
+        currentIdx = i;
         break;
       }
     }
-    ctx.font = '28px sans-serif';
+    const currentWP = this.waypoints[currentIdx];
+    const nextWP = this.waypoints[Math.min(this.waypoints.length - 1, currentIdx + 1)];
+
+    // 若有下一站，载具沿虚线航道巡航往复微动
+    const cruiseProgress = nextWP !== currentWP
+      ? 0.35 + Math.sin(this.animOffset * 0.1) * 0.15
+      : 0;
+    const vx = currentWP.x + (nextWP.x - currentWP.x) * cruiseProgress;
+    const vy = currentWP.y + (nextWP.y - currentWP.y) * cruiseProgress + Math.sin(this.animOffset * 0.2) * 2;
+
+    const isRail = ['paris', 'bombay', 'sanfrancisco'].includes(currentWP.id);
+    const vehicleEmoji = isRail ? '🚂' : '🚢';
+
+    ctx.save();
+    // 载具水波/气流光晕
+    ctx.fillStyle = isRail ? 'rgba(180, 100, 40, 0.18)' : 'rgba(50, 120, 200, 0.18)';
+    ctx.beginPath();
+    ctx.arc(vx, vy + 18, 16 + Math.sin(this.animOffset * 0.15) * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '26px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🚢', currentWP.x, currentWP.y + 22);
+    ctx.fillText(vehicleEmoji, vx, vy + 18);
+    ctx.restore();
+
+    // 5. 右上角绘制维多利亚 16 点风向罗盘玫瑰 (Compass Rose)
+    this.drawCompassRose(ctx, w - 85, 75, 46);
+  }
+
+  drawCompassRose(ctx, cx, cy, r = 46) {
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // 外圈双层航海刻度环
+    ctx.strokeStyle = 'rgba(139, 107, 47, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(173, 134, 72, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 刻度线 (32 分点)
+    for (let i = 0; i < 32; i++) {
+      const angle = (i * Math.PI) / 16;
+      const isMajor = i % 4 === 0;
+      const r1 = r - (isMajor ? 7 : 4);
+      ctx.strokeStyle = isMajor ? '#8b6b2f' : 'rgba(139, 107, 47, 0.5)';
+      ctx.lineWidth = isMajor ? 1.5 : 0.8;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * r1, Math.sin(angle) * r1);
+      ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+      ctx.stroke();
+    }
+
+    // 16 尖角星 (主四方位与次八方位)
+    const points = [
+      { angle: -Math.PI / 2, len: r - 6, label: 'N', color: '#c93434' },
+      { angle: 0, len: r - 10, label: 'E', color: '#b8860b' },
+      { angle: Math.PI / 2, len: r - 10, label: 'S', color: '#b8860b' },
+      { angle: Math.PI, len: r - 10, label: 'W', color: '#b8860b' }
+    ];
+
+    for (let i = 0; i < 4; i++) {
+      const subAngle = -Math.PI / 4 + (i * Math.PI) / 2;
+      ctx.fillStyle = 'rgba(139, 107, 47, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(subAngle - 0.15) * (r * 0.4), Math.sin(subAngle - 0.15) * (r * 0.4));
+      ctx.lineTo(Math.cos(subAngle) * (r - 14), Math.sin(subAngle) * (r - 14));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    points.forEach((pt) => {
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(pt.angle - 0.22) * (r * 0.4), Math.sin(pt.angle - 0.22) * (r * 0.4));
+      ctx.lineTo(Math.cos(pt.angle) * pt.len, Math.sin(pt.angle) * pt.len);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#4a3512';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(pt.angle + 0.22) * (r * 0.4), Math.sin(pt.angle + 0.22) * (r * 0.4));
+      ctx.lineTo(Math.cos(pt.angle) * pt.len, Math.sin(pt.angle) * pt.len);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.font = 'bold 12px "Cinzel", "Georgia", serif';
+      ctx.fillStyle = pt.label === 'N' ? '#8b1e1e' : '#3a2a12';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const textR = r + 11;
+      ctx.fillText(pt.label, Math.cos(pt.angle) * textR, Math.sin(pt.angle) * textR);
+    });
+
+    ctx.fillStyle = '#d4af37';
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a2a12';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.restore();
   }
 }
 
 
 /* ==================== src/shell/passport.js ==================== */
+
+
+
+
+
+
+
+const STAMP_JOURNALS = {
+  london: '伦敦改良俱乐部 · 启程：两万英镑赌约立定，向东踏入未知的世界。',
+  suez: '苏伊士运河 · 英国领事馆：登上蒙古号皇家邮轮，劈波斩浪穿过红海。',
+  bombay: '孟买总督府 · 抵达印度：火车前路断裂，奇阿尼巨象密林疾行。',
+  calcutta: '加尔各答公堂 · 东印度公司：两千镑保释解救艾娥达，登船逃出法网。',
+  hongkong: '香港维多利亚港：台风中租下双桅帆船坦克德尔号，冒死追赶上海邮轮。',
+  yokohama: '日本横滨帝国通关：长鼻天狗人梯杂技惊艳相认，全员汇合登大太平洋轮。',
+  sanfrancisco: '旧金山太平洋大铁路：穿过选战暴徒乱局，登上横贯大陆列车。',
+  newyork: '纽约港口官印：风帆雪橇冰原狂飙五十迈，买下亨丽埃塔号商船。',
+  liverpool: '利物浦皇家海关：拆船烧甲板硬渡大西洋，菲克斯验明清白误会冰释。',
+  london_final: '伦敦改良俱乐部凯旋：日界线东行抢回一日，八十天赌约完胜！'
+};
 class PassportView {
   constructor() {
     this.modal = document.getElementById('passport-modal');
@@ -10704,21 +11566,27 @@ class PassportView {
       { id: 'london_final', city: 'LONDON TRIUMPH', date: '21 DEC 1872', auth: '★ REFORM CLUB ★' }
     ];
 
-    allSlots.forEach(slot => {
+    allSlots.forEach((slot, idx) => {
       const isStamped = state.passport.some(s => s.id === slot.id || (slot.id === 'calcutta' && (s.id === 'calcutta_aouda' || s.id === 'calcutta_court')));
       const slotEl = document.createElement('div');
       slotEl.className = `stamp-slot ${isStamped ? 'stamped' : ''}`;
+      slotEl.title = isStamped ? `点击查阅 ${slot.city} 探险手账` : `未抵达 · ${slot.city}`;
 
       if (isStamped) {
         const stampData = state.passport.find(s => s.id === slot.id || (slot.id === 'calcutta' && (s.id === 'calcutta_aouda' || s.id === 'calcutta_court')));
+        const rot = (((slot.city.charCodeAt(0) * 13 + idx) % 9) - 4).toFixed(1);
         slotEl.innerHTML = `
-          <div class="stamp-seal stamp-slam-anim ${stampData.color || slot.id}">
+          <div class="stamp-seal stamp-slam-anim ${stampData.color || slot.id}" style="transform: rotate(${rot}deg);">
             <div class="seal-auth">${slot.auth}</div>
             <div class="seal-city">${stampData.city || slot.city}</div>
             <div class="seal-date">${stampData.date || slot.date}</div>
             <div class="seal-auth">★ VISA GRANTED ★</div>
           </div>
         `;
+        slotEl.addEventListener('click', () => {
+          if (sound && sound.playParchmentRustle) sound.playParchmentRustle();
+          if (fx && fx.toast) fx.toast(`📜 【${slot.city} 探险手账】${STAMP_JOURNALS[slot.id] || '签证已核准通过。'}`);
+        });
       } else {
         slotEl.innerHTML = `
           <div style="color: #a89a84; font-size: 13px; text-align: center;">
@@ -10726,6 +11594,10 @@ class PassportView {
             [ 未抵达 · ${slot.city} ]
           </div>
         `;
+        slotEl.addEventListener('click', () => {
+          if (sound && sound.playClick) sound.playClick();
+          if (fx && fx.toast) fx.toast(`⚓ 【${slot.city}】此地尚未完成探险盖章，继续前行吧。`);
+        });
       }
 
       this.stampsGrid.appendChild(slotEl);
@@ -20278,6 +21150,7 @@ const miniGameRegistry = new MiniGameRegistry();
 
 /* ==================== src/levels/leg0.js ==================== */
 async function runLeg0({ gameRunner, hud }) {
+  await IntertitleCard.show(0);
   hud.setLocation('伦敦 · 改良俱乐部');
   hud.show();
 
@@ -20376,6 +21249,7 @@ async function runLeg0({ gameRunner, hud }) {
 
 /* ==================== src/levels/leg1.js ==================== */
 async function runLeg1({ gameRunner, hud }) {
+  await IntertitleCard.show(1);
   hud.setLocation('多佛港 ➔ 苏伊士');
   hud.show();
 
@@ -20491,6 +21365,7 @@ async function runLeg1({ gameRunner, hud }) {
 /* ==================== src/levels/leg2.js ==================== */
 // 《Fogg 的赌约》· 关2 苏伊士 ➔ 红海风暴 ➔ 孟买 (Leg 2: Suez, Red Sea Overdrive & Bombay)
 async function runLeg2({ gameRunner, hud }) {
+  await IntertitleCard.show(2);
   hud.setLocation('苏伊士 ➔ 红海 ➔ 孟买');
   hud.show();
 
@@ -20603,6 +21478,7 @@ async function runLeg2({ gameRunner, hud }) {
 
 /* ==================== src/levels/leg3.js ==================== */
 async function runLeg3({ gameRunner, hud }) {
+  await IntertitleCard.show(3);
   hud.setLocation('印度 · 断轨之后');
   hud.show();
   sceneBackdrop?.setBackdrop('elephant');
@@ -20691,6 +21567,7 @@ async function runLeg3({ gameRunner, hud }) {
 /* ==================== src/levels/leg4.js ==================== */
 // 《Fogg 的赌约》· 关4 加尔各答公堂智斗与仰光号起航 (Leg 4: Calcutta Court & Rangoon Steamer)
 async function runLeg4({ gameRunner, hud }) {
+  await IntertitleCard.show(4);
   hud.setLocation('印度加尔各答 ➔ 马六甲海峡');
   hud.show();
 
@@ -20787,6 +21664,7 @@ async function runLeg4({ gameRunner, hud }) {
 /* ==================== src/levels/leg5.js ==================== */
 // 香港失船 → 坦克德尔号赶赴上海 → 接邮船往横滨。
 async function runLeg5({ gameRunner, hud }) {
+  await IntertitleCard.show(5);
   hud.setLocation('香港 → 上海外海 → 横滨');
   hud.show();
   sceneBackdrop?.setBackdrop('hongkong');
@@ -20852,6 +21730,7 @@ async function runLeg5({ gameRunner, hud }) {
 /* ==================== src/levels/leg6.js ==================== */
 // 横滨：台上主动相认，或接受后台寻找的半天代价；确认前不写入旅程。
 async function runLeg6({ gameRunner, hud }) {
+  await IntertitleCard.show(6);
   hud.setLocation('日本横滨 ➔ 太平洋');
   hud.show();
 
@@ -20932,6 +21811,7 @@ async function runLeg6({ gameRunner, hud }) {
 /* ==================== src/levels/leg7.js ==================== */
 // 《Fogg 的赌约》· 关7 旧金山选战大乱斗与大铁路起航 (Leg 7: San Francisco Brawl)
 async function runLeg7({ gameRunner, hud }) {
+  await IntertitleCard.show(7);
   hud.setLocation('美利坚旧金山 ➔ 太平洋大铁路');
   hud.show();
 
@@ -21006,6 +21886,7 @@ async function runLeg7({ gameRunner, hud }) {
 /* ==================== src/levels/leg8.js ==================== */
 // 《Fogg 的赌约》· 关8 洛矶山断桥飞跃与风帆雪橇狂飙 (Leg 8: Rocky Mountain Train & Ice Sledge)
 async function runLeg8({ gameRunner, hud }) {
+  await IntertitleCard.show(8);
   hud.setLocation('洛矶山脉 ➔ 内布拉斯加雪原 ➔ 纽约');
   hud.show();
 
@@ -21086,6 +21967,7 @@ async function runLeg8({ gameRunner, hud }) {
 /* ==================== src/levels/leg9.js ==================== */
 // 《Fogg 的赌约》· 关9 亨丽埃塔号大西洋大燃烧 (Leg 9: SS Henrietta Burning)
 async function runLeg9({ gameRunner, hud }) {
+  await IntertitleCard.show(9);
   hud.setLocation('大西洋 ➔ 英国利物浦港');
   hud.show();
 
@@ -21162,6 +22044,7 @@ async function runLeg9({ gameRunner, hud }) {
 
 /* ==================== src/levels/leg10.js ==================== */
 async function runLeg10({ gameRunner, hud }) {
+  await IntertitleCard.show(10);
   hud.setLocation('伦敦 · 回到改良俱乐部');
   hud.show();
   if (sceneBackdrop) sceneBackdrop.setBackdrop('london_finale');
@@ -21236,6 +22119,7 @@ async function runLeg10({ gameRunner, hud }) {
 
 
 
+
 class GameApp {
   constructor() {
     this.container = document.getElementById('game-container');
@@ -21244,6 +22128,7 @@ class GameApp {
     this.fxCanvas = document.getElementById('fx-canvas');
     this.fxCtx = this.fxCanvas.getContext('2d');
     this.orientation = new OrientationAdapter();
+    this.cursor = new VictorianCursor();
     this.input = new InputManager(this.container, this.gameCanvas);
     this.hud = new HUD();
     this.map = new WorldMap();
@@ -21343,7 +22228,18 @@ class GameApp {
       if (!this.pauseModal.classList.contains('hidden')) this.resumePlay();
       else this.showPause();
     });
-    events.on('ui:overlay', ({ id, open }) => this.setPauseReason(id, open));
+    events.on('ui:overlay', ({ id, open }) => {
+      this.setPauseReason(id, open);
+      if (open && sound && sound.playLatchClick) sound.playLatchClick();
+    });
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('pointerenter', (e) => {
+        const target = e.target && e.target.closest && e.target.closest('button, .hud-btn, .arcade-card, .stamp-slot, .decision-opt-btn, .start-btn');
+        if (target && sound && sound.playHover) {
+          sound.playHover();
+        }
+      }, true);
+    }
     events.on('game:portrait', () => {
       if (this.activeMiniGame) this.showPause('竖屏时已暂停。把手机横过来，再继续这一程。');
     });

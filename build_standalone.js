@@ -44,6 +44,8 @@ function build() {
     'src/engine/backdrop.js',
     'src/input/InputManager.js',
     'src/shell/orientation.js',
+    'src/shell/cursor.js',
+    'src/shell/intertitle.js',
     'src/shell/briefing.js',
     'src/shell/hud.js',
     'src/shell/dialogue.js',

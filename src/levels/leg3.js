@@ -6,8 +6,10 @@ import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
 import { gameState } from '../core/state.js';
 import { RESCUE_PLANS, getJourneyStatus } from '../core/journey.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg3({ gameRunner, hud }) {
+  await IntertitleCard.show(3);
   hud.setLocation('印度 · 断轨之后');
   hud.show();
   sceneBackdrop?.setBackdrop('elephant');

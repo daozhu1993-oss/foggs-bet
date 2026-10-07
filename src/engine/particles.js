@@ -4,6 +4,7 @@ export class ParticleSystem {
     this.canvas = canvas;
     this.ctx = canvas ? canvas.getContext('2d') : null;
     this.particles = [];
+    this.motesEnabled = true;
   }
 
   setCanvas(canvas) {
@@ -158,11 +159,44 @@ export class ParticleSystem {
   }
 
   update(dt = 1/60) {
+    if (this.motesEnabled) {
+      let moteCount = 0;
+      for (let i = 0; i < this.particles.length; i++) {
+        if (this.particles[i].type === 'mote') moteCount++;
+      }
+      while (moteCount < 26) {
+        this.particles.push({
+          type: 'mote',
+          x: Math.random() * 1280,
+          y: Math.random() * 720,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: -Math.random() * 0.4 - 0.15,
+          radius: Math.random() * 1.8 + 0.8,
+          alpha: Math.random() * 0.35 + 0.12,
+          decay: 0.001,
+          color: Math.random() > 0.4 ? 'rgba(255, 235, 170, ' : 'rgba(212, 175, 55, '
+        });
+        moteCount++;
+      }
+    }
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
       p.y += p.vy;
       p.alpha -= p.decay;
+
+      if (p.type === 'mote') {
+        if (p.y < -10) {
+          p.y = 730;
+          p.x = Math.random() * 1280;
+          p.alpha = Math.random() * 0.35 + 0.12;
+        }
+        if (p.alpha <= 0.02) {
+          p.alpha = Math.random() * 0.35 + 0.12;
+        }
+        continue;
+      }
 
       if (p.type === 'steam') {
         p.radius += (p.maxRadius - p.radius) * 0.05;
@@ -191,6 +225,11 @@ export class ParticleSystem {
 
       if (p.type === 'steam' || p.type === 'dust' || p.type === 'spark') {
         ctx.fillStyle = `${p.color}${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.type === 'mote') {
+        ctx.fillStyle = `${p.color}1)`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();

@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+  <!-- 维多利亚定制高精罗盘光标 (仅桌面端精细指针生效) -->
+  <div id="custom-cursor" class="custom-cursor" aria-hidden="true"></div>
+  <div id="cursor-follower" class="cursor-follower" aria-hidden="true"></div>
+
   <!-- 竖屏强制提示遮罩 -->
   <div id="orientation-guard" class="orientation-guard hidden">
     <div class="guard-content">
@@ -60,7 +64,9 @@
           <button id="btn-map" class="hud-btn" title="查看航线地图">🗺️ 航线</button>
           <button id="btn-passport" class="hud-btn" title="查看护照钢印">📜 护照</button>
           <button id="btn-arcade-hud" class="hud-btn hidden" title="游乐场自由挑战">🎪 游乐场</button>
-          <button id="btn-sound" class="hud-btn" title="声音开关">🔊 音效</button>
+          <button id="btn-sound" class="hud-btn" title="声音开关">
+            <span class="sound-wave-bars" aria-hidden="true"><span class="bar bar-1"></span><span class="bar bar-2"></span><span class="bar bar-3"></span></span><span id="sound-label">音效</span>
+          </button>
           <button id="btn-pause" class="hud-btn" title="暂停游戏" aria-label="暂停游戏" aria-pressed="false">⏸️</button>
         </div>
       </header>
@@ -431,7 +437,9 @@
             <button id="btn-restart-game" class="danger-btn">🔄 重新开始探险</button>
           </div>
         </div>
-      </div>
+
+      <!-- 维多利亚章回幕间题头幕 -->
+      <div id="intertitle-overlay" class="intertitle-overlay hidden" role="dialog" aria-modal="true"></div>
 
       <!-- 标题封面主菜单 -->
       <div id="title-screen" class="title-screen">

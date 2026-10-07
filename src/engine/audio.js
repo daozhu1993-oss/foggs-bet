@@ -554,6 +554,60 @@ class SoundEngine {
     osc.stop(now + 0.03);
   }
 
+  // 微机械悬停齿轮轻响 (Micro Gear Hover Tick)
+  playHover() {
+    if (!this.enabled || this.paused) return;
+    this.resume();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1600, now);
+    osc.frequency.exponentialRampToValueAtTime(2200, now + 0.015);
+    gain.gain.setValueAtTime(0.025, now);
+    gain.gain.exponentialRampToValueAtTime(0.0005, now + 0.02);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.025);
+  }
+
+  // 怀表机括弹片咬合声 (Brass Latch Click)
+  playLatchClick() {
+    if (!this.enabled || this.paused) return;
+    this.resume();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1100, now);
+    osc.frequency.exponentialRampToValueAtTime(350, now + 0.04);
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.06);
+  }
+
+  // 羊皮纸展开摩擦脆响 (Parchment Rustle)
+  playParchmentRustle() {
+    if (!this.enabled || this.paused) return;
+    this.resume();
+    if (!this.ctx) return;
+    this.playCardFlip();
+  }
+
   // 经典太鼓达人打击乐物理建模 (咚 Dong / 咔 Ka / 大咚 DON)
   playRhythmHit(type = 'left') {
     if (!this.enabled || this.paused) return;

@@ -6,8 +6,10 @@ import { decisionModal } from '../shell/decisionModal.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
 import { gameState } from '../core/state.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg2({ gameRunner, hud }) {
+  await IntertitleCard.show(2);
   hud.setLocation('苏伊士 ➔ 红海 ➔ 孟买');
   hud.show();
 

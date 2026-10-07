@@ -6,8 +6,10 @@ import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
 import { gameState } from '../core/state.js';
 import { getWagerOutcome } from '../core/journey.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg10({ gameRunner, hud }) {
+  await IntertitleCard.show(10);
   hud.setLocation('伦敦 · 回到改良俱乐部');
   hud.show();
   if (sceneBackdrop) sceneBackdrop.setBackdrop('london_finale');

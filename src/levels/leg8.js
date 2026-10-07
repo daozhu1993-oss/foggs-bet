@@ -5,8 +5,10 @@ import { resultCard } from '../shell/resultCard.js';
 import { decisionModal } from '../shell/decisionModal.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg8({ gameRunner, hud }) {
+  await IntertitleCard.show(8);
   hud.setLocation('洛矶山脉 ➔ 内布拉斯加雪原 ➔ 纽约');
   hud.show();
 

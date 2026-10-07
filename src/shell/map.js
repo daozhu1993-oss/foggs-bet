@@ -142,17 +142,126 @@ export class WorldMap {
       ctx.restore();
     });
 
-    // 4. 绘制当前载具（船/火车）
-    let currentWP = this.waypoints[0];
+    // 4. 绘制航行中巡航载具（平滑巡航与水波呼吸）
+    let currentIdx = 0;
     for (let i = this.waypoints.length - 1; i >= 0; i--) {
       if (this.waypoints[i].reached) {
-        currentWP = this.waypoints[i];
+        currentIdx = i;
         break;
       }
     }
-    ctx.font = '28px sans-serif';
+    const currentWP = this.waypoints[currentIdx];
+    const nextWP = this.waypoints[Math.min(this.waypoints.length - 1, currentIdx + 1)];
+
+    // 若有下一站，载具沿虚线航道巡航往复微动
+    const cruiseProgress = nextWP !== currentWP
+      ? 0.35 + Math.sin(this.animOffset * 0.1) * 0.15
+      : 0;
+    const vx = currentWP.x + (nextWP.x - currentWP.x) * cruiseProgress;
+    const vy = currentWP.y + (nextWP.y - currentWP.y) * cruiseProgress + Math.sin(this.animOffset * 0.2) * 2;
+
+    const isRail = ['paris', 'bombay', 'sanfrancisco'].includes(currentWP.id);
+    const vehicleEmoji = isRail ? '🚂' : '🚢';
+
+    ctx.save();
+    // 载具水波/气流光晕
+    ctx.fillStyle = isRail ? 'rgba(180, 100, 40, 0.18)' : 'rgba(50, 120, 200, 0.18)';
+    ctx.beginPath();
+    ctx.arc(vx, vy + 18, 16 + Math.sin(this.animOffset * 0.15) * 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '26px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🚢', currentWP.x, currentWP.y + 22);
+    ctx.fillText(vehicleEmoji, vx, vy + 18);
+    ctx.restore();
+
+    // 5. 右上角绘制维多利亚 16 点风向罗盘玫瑰 (Compass Rose)
+    this.drawCompassRose(ctx, w - 85, 75, 46);
+  }
+
+  drawCompassRose(ctx, cx, cy, r = 46) {
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // 外圈双层航海刻度环
+    ctx.strokeStyle = 'rgba(139, 107, 47, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(173, 134, 72, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 刻度线 (32 分点)
+    for (let i = 0; i < 32; i++) {
+      const angle = (i * Math.PI) / 16;
+      const isMajor = i % 4 === 0;
+      const r1 = r - (isMajor ? 7 : 4);
+      ctx.strokeStyle = isMajor ? '#8b6b2f' : 'rgba(139, 107, 47, 0.5)';
+      ctx.lineWidth = isMajor ? 1.5 : 0.8;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * r1, Math.sin(angle) * r1);
+      ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+      ctx.stroke();
+    }
+
+    // 16 尖角星 (主四方位与次八方位)
+    const points = [
+      { angle: -Math.PI / 2, len: r - 6, label: 'N', color: '#c93434' },
+      { angle: 0, len: r - 10, label: 'E', color: '#b8860b' },
+      { angle: Math.PI / 2, len: r - 10, label: 'S', color: '#b8860b' },
+      { angle: Math.PI, len: r - 10, label: 'W', color: '#b8860b' }
+    ];
+
+    for (let i = 0; i < 4; i++) {
+      const subAngle = -Math.PI / 4 + (i * Math.PI) / 2;
+      ctx.fillStyle = 'rgba(139, 107, 47, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(subAngle - 0.15) * (r * 0.4), Math.sin(subAngle - 0.15) * (r * 0.4));
+      ctx.lineTo(Math.cos(subAngle) * (r - 14), Math.sin(subAngle) * (r - 14));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    points.forEach((pt) => {
+      ctx.fillStyle = pt.color;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(pt.angle - 0.22) * (r * 0.4), Math.sin(pt.angle - 0.22) * (r * 0.4));
+      ctx.lineTo(Math.cos(pt.angle) * pt.len, Math.sin(pt.angle) * pt.len);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#4a3512';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(pt.angle + 0.22) * (r * 0.4), Math.sin(pt.angle + 0.22) * (r * 0.4));
+      ctx.lineTo(Math.cos(pt.angle) * pt.len, Math.sin(pt.angle) * pt.len);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.font = 'bold 12px "Cinzel", "Georgia", serif';
+      ctx.fillStyle = pt.label === 'N' ? '#8b1e1e' : '#3a2a12';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const textR = r + 11;
+      ctx.fillText(pt.label, Math.cos(pt.angle) * textR, Math.sin(pt.angle) * textR);
+    });
+
+    ctx.fillStyle = '#d4af37';
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#3a2a12';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.restore();
   }
 }

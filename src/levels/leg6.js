@@ -5,8 +5,10 @@ import { resultCard } from '../shell/resultCard.js';
 import { decisionModal } from '../shell/decisionModal.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg6({ gameRunner, hud }) {
+  await IntertitleCard.show(6);
   hud.setLocation('日本横滨 ➔ 太平洋');
   hud.show();
 

@@ -4,8 +4,10 @@ import { resolveLeg } from '../core/resolve.js';
 import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg7({ gameRunner, hud }) {
+  await IntertitleCard.show(7);
   hud.setLocation('美利坚旧金山 ➔ 太平洋大铁路');
   hud.show();
 

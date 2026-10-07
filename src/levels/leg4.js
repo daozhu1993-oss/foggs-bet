@@ -5,8 +5,10 @@ import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
 import { gameState } from '../core/state.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg4({ gameRunner, hud }) {
+  await IntertitleCard.show(4);
   hud.setLocation('印度加尔各答 ➔ 马六甲海峡');
   hud.show();
 

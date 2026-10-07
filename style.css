@@ -1453,3 +1453,328 @@ button:focus-visible { outline: 3px solid #c89631; outline-offset: 4px; }
 .hidden {
   display: none !important;
 }
+
+/* ========================================================
+   1. 维多利亚高精罗盘光标 (Victorian Precision Compass Cursor)
+   仅在精细指针且支持 hover 的桌面端开启，移动触控完全跳过
+   ======================================================== */
+@media (hover: hover) and (pointer: fine) {
+  body {
+    cursor: default;
+  }
+
+  .custom-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    background: #d4af37;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity 0.2s ease, width 0.2s ease, height 0.2s ease, background-color 0.2s ease;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.85);
+    will-change: transform;
+  }
+
+  .cursor-follower {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid rgba(212, 175, 55, 0.65);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 99998;
+    opacity: 0;
+    transition: opacity 0.25s ease, width 0.25s ease, height 0.25s ease, border-color 0.25s ease, transform 0.05s linear;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2), inset 0 0 6px rgba(212, 175, 55, 0.1);
+    will-change: transform;
+  }
+
+  /* 悬停交互元素时吸附放大并变换罗盘光圈 */
+  body.cursor-hover .custom-cursor {
+    width: 6px;
+    height: 6px;
+    background: #f7e2a9;
+    box-shadow: 0 0 12px rgba(247, 226, 169, 1);
+  }
+
+  body.cursor-hover .cursor-follower {
+    width: 44px;
+    height: 44px;
+    border-color: rgba(247, 226, 169, 0.9);
+    border-width: 2px;
+    background: rgba(212, 175, 55, 0.08);
+    box-shadow: 0 0 16px rgba(212, 175, 55, 0.4), inset 0 0 10px rgba(212, 175, 55, 0.2);
+  }
+
+  /* 鼠标按下反馈 */
+  body.cursor-click .custom-cursor {
+    transform: translate(-50%, -50%) scale(1.4);
+    background: #ffffff;
+  }
+
+  body.cursor-click .cursor-follower {
+    transform: translate(-50%, -50%) scale(0.85);
+    border-color: #f7e2a9;
+    background: rgba(247, 226, 169, 0.25);
+  }
+}
+
+@media (pointer: coarse) {
+  .custom-cursor, .cursor-follower {
+    display: none !important;
+  }
+}
+
+/* ========================================================
+   2. 电影级维多利亚章回幕间题头卡 (Cinematic Chapter Intertitle Cards)
+   ======================================================== */
+.intertitle-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(14, 18, 25, 0.94) 0%, rgba(5, 7, 10, 0.98) 100%);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.intertitle-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intertitle-card {
+  position: relative;
+  width: min(720px, 90vw);
+  max-height: 88vh;
+  padding: 44px 36px 36px;
+  background: #111622;
+  border: 2px solid #ad8648;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #463417, 0 28px 80px rgba(0, 0, 0, 0.85), inset 0 0 80px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  color: #eedcc0;
+  animation: intertitleCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow-y: auto;
+}
+
+@keyframes intertitleCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 维多利亚古典四角花角 */
+.intertitle-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #d4af37;
+  border-style: solid;
+  pointer-events: none;
+}
+.intertitle-corner.top-left {
+  top: 8px; left: 8px;
+  border-width: 2px 0 0 2px;
+}
+.intertitle-corner.top-right {
+  top: 8px; right: 8px;
+  border-width: 2px 2px 0 0;
+}
+.intertitle-corner.bottom-left {
+  bottom: 8px; left: 8px;
+  border-width: 0 0 2px 2px;
+}
+.intertitle-corner.bottom-right {
+  bottom: 8px; right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+.intertitle-ornament-top,
+.intertitle-ornament-bottom {
+  font-size: 14px;
+  letter-spacing: 6px;
+  color: #ad8648;
+  margin: 4px 0 12px;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+}
+
+.intertitle-act {
+  font-family: 'Cinzel Decorative', 'Cinzel', 'Georgia', serif;
+  font-size: 15px;
+  letter-spacing: 5px;
+  color: #c99b42;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.intertitle-title {
+  font-family: 'Cinzel', 'Georgia', 'Songti SC', serif;
+  font-size: clamp(24px, 4vw, 34px);
+  color: #f7e6c4;
+  margin: 0 0 16px;
+  letter-spacing: 2px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.intertitle-line {
+  width: 140px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  margin: 0 auto 20px;
+}
+
+.intertitle-quote {
+  font-family: 'Georgia', 'Songti SC', serif;
+  font-style: italic;
+  font-size: clamp(15px, 2.2vw, 18px);
+  line-height: 1.8;
+  color: #d8c4a0;
+  max-width: 580px;
+  margin: 0 auto 24px;
+  padding: 0 16px;
+}
+
+.intertitle-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.stat-pill {
+  padding: 8px 16px;
+  background: rgba(28, 36, 50, 0.7);
+  border: 1px solid rgba(173, 134, 72, 0.4);
+  border-radius: 20px;
+  font-size: 13px;
+  color: #e2ceaa;
+  letter-spacing: 0.5px;
+}
+
+.intertitle-btn {
+  padding: 12px 36px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.intertitle-prompt {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #8f7956;
+  letter-spacing: 1px;
+}
+
+/* ========================================================
+   3. HUD 声景波动器 (HUD Audio Wave Visualizer)
+   ======================================================== */
+.sound-wave-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.sound-wave-bars .bar {
+  width: 3px;
+  background: #d4af37;
+  border-radius: 1.5px;
+  transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.sound-wave-bars .bar-1 { height: 6px; animation: soundBarWave 1s ease-in-out infinite alternate; }
+.sound-wave-bars .bar-2 { height: 12px; animation: soundBarWave 1.2s ease-in-out 0.2s infinite alternate; }
+.sound-wave-bars .bar-3 { height: 8px; animation: soundBarWave 0.9s ease-in-out 0.4s infinite alternate; }
+
+@keyframes soundBarWave {
+  0% { height: 4px; }
+  100% { height: 14px; }
+}
+
+.sound-muted .sound-wave-bars .bar {
+  animation: none !important;
+  height: 3px !important;
+  opacity: 0.4;
+  background: #888;
+}
+
+/* ========================================================
+   4. 金箔流光与奢华质感 (Awwwards Gilded Shimmer & Urgency)
+   ======================================================== */
+.shimmer-gold {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-gold::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 20%,
+    rgba(255, 235, 170, 0.25) 50%,
+    transparent 80%
+  );
+  transform: rotate(25deg) translateY(-100%);
+  animation: goldShimmer 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes goldShimmer {
+  0%, 70% {
+    transform: rotate(25deg) translateY(-100%);
+  }
+  100% {
+    transform: rotate(25deg) translateY(100%);
+  }
+}
+
+/* 怀表紧急状态脉冲 (Chronometer Urgency Pulse) */
+.watch-urgent {
+  animation: urgentWatchPulse 1.4s ease-in-out infinite !important;
+  box-shadow: 0 0 16px rgba(220, 60, 40, 0.7), inset 0 0 12px rgba(220, 60, 40, 0.4) !important;
+  border-color: #d64232 !important;
+}
+
+@keyframes urgentWatchPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(220, 60, 40, 0.5), inset 0 0 8px rgba(220, 60, 40, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(220, 60, 40, 0.9), inset 0 0 16px rgba(220, 60, 40, 0.6);
+  }
+}
+
+/* 护照钢印微交互 */
+.stamp-slot {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.stamp-slot:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+

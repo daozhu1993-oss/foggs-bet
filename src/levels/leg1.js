@@ -4,8 +4,10 @@ import { resultCard } from '../shell/resultCard.js';
 import { decisionModal } from '../shell/decisionModal.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg1({ gameRunner, hud }) {
+  await IntertitleCard.show(1);
   hud.setLocation('多佛港 ➔ 苏伊士');
   hud.show();
 

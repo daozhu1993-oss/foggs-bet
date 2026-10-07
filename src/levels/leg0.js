@@ -4,8 +4,10 @@ import { resultCard } from '../shell/resultCard.js';
 import { arcadeManager } from '../shell/arcade.js';
 import { sceneBackdrop } from '../engine/backdrop.js';
 import { decisionModal } from '../shell/decisionModal.js';
+import { IntertitleCard } from '../shell/intertitle.js';
 
 export async function runLeg0({ gameRunner, hud }) {
+  await IntertitleCard.show(0);
   hud.setLocation('伦敦 · 改良俱乐部');
   hud.show();
 
